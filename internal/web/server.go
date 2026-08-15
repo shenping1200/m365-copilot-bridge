@@ -13,6 +13,8 @@ import (
 	"m365-native/internal/chathub"
 	"m365-native/internal/proxy"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -42,6 +44,8 @@ type Server struct {
 	accountStats       map[string]int64
 		accountTokenIn  map[string]int64
 		accountTokenOut map[string]int64
+	statsPath          string
+	statsDirty         bool
 	accountPool        *accountHealth
 	accountPoolOnce    sync.Once
 }
@@ -52,7 +56,7 @@ func New() (*Server, error) {
 		return nil, err
 	}
 	password, mustChange := loadAdminPassword()
-	return &Server{
+	s := &Server{
 		tokens:             store,
 		pkce:               map[string]pendingPKCE{},
 		chat:               chathub.NewClient(),
@@ -67,7 +71,11 @@ func New() (*Server, error) {
 		accountStats:       make(map[string]int64),
 		accountTokenIn:     make(map[string]int64),
 		accountTokenOut:    make(map[string]int64),
-	}, nil
+		statsPath:          filepath.Join(filepath.Dir(auth.CachePath()), "stats.json"),
+	}
+	s.loadStats()
+	go s.statsSaver()
+	return s, nil
 }
 
 func (s *Server) Routes() http.Handler {
@@ -87,6 +95,7 @@ func (s *Server) Routes() http.Handler {
 	m.HandleFunc("/api/accounts/proxy", s.updateAccountProxy)
 	m.HandleFunc("/api/admin/test-proxy", s.testProxy)
 	m.HandleFunc("/api/admin/test-all-proxies", s.testAllProxies)
+	m.HandleFunc("/api/admin/reset-stats", s.resetStatsHandler)
 	m.HandleFunc("/api/auth/start", s.startPKCE)
 	m.HandleFunc("/api/auth/callback", s.callbackPKCE)
 	m.HandleFunc("/api/chat", s.chatOnce)
@@ -370,6 +379,7 @@ func (s *Server) recordTokens(id, inputText, outputText string) {
 	defer s.mu.Unlock()
 	s.accountTokenIn[id] += int64(in)
 	s.accountTokenOut[id] += int64(out)
+	s.statsDirty = true
 }
 
 // addTokens accumulates a pre-estimated input/output token pair for an account.
@@ -381,6 +391,117 @@ func (s *Server) addTokens(id string, in, out int64) {
 	defer s.mu.Unlock()
 	s.accountTokenIn[id] += in
 	s.accountTokenOut[id] += out
+	s.statsDirty = true
+}
+
+// statsFile is the on-disk representation of usage counters so they survive a
+// process/container restart.
+type statsFile struct {
+	Version  int              `json:"version"`
+	Stats    map[string]int64 `json:"stats"`
+	TokenIn  map[string]int64 `json:"tokenIn"`
+	TokenOut map[string]int64 `json:"tokenOut"`
+}
+
+// loadStats restores the per-account counters from disk into memory.
+func (s *Server) loadStats() {
+	if s.statsPath == "" {
+		return
+	}
+	b, err := os.ReadFile(s.statsPath)
+	if err != nil {
+		return
+	}
+	var f statsFile
+	if err := json.Unmarshal(b, &f); err != nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if f.Stats != nil {
+		for k, v := range f.Stats {
+			s.accountStats[k] = v
+		}
+	}
+	if f.TokenIn != nil {
+		for k, v := range f.TokenIn {
+			s.accountTokenIn[k] = v
+		}
+	}
+	if f.TokenOut != nil {
+		for k, v := range f.TokenOut {
+			s.accountTokenOut[k] = v
+		}
+	}
+}
+
+// saveStats writes the current counters to disk atomically.
+func (s *Server) saveStats() {
+	if s.statsPath == "" {
+		return
+	}
+	s.mu.Lock()
+	f := statsFile{
+		Version:  1,
+		Stats:    s.accountStats,
+		TokenIn:  s.accountTokenIn,
+		TokenOut: s.accountTokenOut,
+	}
+	s.statsDirty = false
+	s.mu.Unlock()
+	b, err := json.MarshalIndent(f, "", "  ")
+	if err != nil {
+		return
+	}
+	dir := filepath.Dir(s.statsPath)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return
+	}
+	tmp := s.statsPath + ".tmp"
+	if err := os.WriteFile(tmp, b, 0o600); err != nil {
+		return
+	}
+	_ = os.Rename(tmp, s.statsPath)
+}
+
+// statsSaver periodically flushes counters to disk so a restart does not lose
+// more than a few seconds of usage data.
+func (s *Server) statsSaver() {
+	t := time.NewTicker(10 * time.Second)
+	defer t.Stop()
+	for range t.C {
+		s.mu.Lock()
+		dirty := s.statsDirty
+		s.mu.Unlock()
+		if dirty {
+			s.saveStats()
+		}
+	}
+}
+
+// resetStats zeroes all counters (totals and per-account) and flushes to disk.
+func (s *Server) resetStats() {
+	s.mu.Lock()
+	s.accountStats = make(map[string]int64)
+	s.accountTokenIn = make(map[string]int64)
+	s.accountTokenOut = make(map[string]int64)
+	s.statsDirty = true
+	s.mu.Unlock()
+	s.saveStats()
+}
+
+// resetStatsHandler handles POST /api/admin/reset-stats.
+func (s *Server) resetStatsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !s.validAdminSession(r) {
+		writeOpenAIError(w, http.StatusUnauthorized, "auth_error", "administrator session required")
+		return
+	}
+	s.resetStats()
+	jsonOut(w, map[string]any{"status": "reset", "totalRequestCount": 0, "totalTokenIn": 0, "totalTokenOut": 0})
 }
 
 func (s *Server) refreshAccount(w http.ResponseWriter, r *http.Request) {
@@ -422,6 +543,12 @@ func (s *Server) deleteAccount(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	s.mu.Lock()
+	delete(s.accountStats, body.ID)
+	delete(s.accountTokenIn, body.ID)
+	delete(s.accountTokenOut, body.ID)
+	s.statsDirty = true
+	s.mu.Unlock()
 	removed := s.sessions.deleteByAccount(body.ID)
 	jsonOut(w, map[string]any{"status": "deleted", "sessionsRemoved": removed})
 }
@@ -678,6 +805,7 @@ func (s *Server) resolveAccount(accountID string) (auth.AccountToken, error) {
 		if err == nil {
 			s.mu.Lock()
 			s.accountStats[accountID]++
+			s.statsDirty = true
 			s.mu.Unlock()
 		}
 		return tok, err
@@ -698,9 +826,10 @@ func (s *Server) resolveAccount(accountID string) (auth.AccountToken, error) {
 			continue
 		}
 		tok, err := s.tokens.EnsureValid(acc.ID)
-		if err == nil {
+			if err == nil {
 			s.mu.Lock()
 			s.accountStats[acc.ID]++
+			s.statsDirty = true
 			s.mu.Unlock()
 			return tok, nil
 		}
