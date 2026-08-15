@@ -1,118 +1,193 @@
 # Copilot Bridge
 
-把你的 Microsoft 365 Copilot 账号，变成一套**标准的 OpenAI / Anthropic 兼容 API**：聊天、流式输出、多模态、工具调用、会话记忆全支持。多账号统一网关，自带 Web 管理后台。
+> Microsoft 365 Copilot **ChatHub 网关** —— 把微软 ChatHub（SignalR WebSocket）转成 **OpenAI / Anthropic 兼容 API**，让你手头的任意 OpenAI / Claude 客户端、脚本、Agent 框架都能直接调用 M365 Copilot。
 
-> 本工具只是"互通网关"，不是绕过验证的工具。你只能使用自己有权限的 Microsoft 账号与租户。
-
-## 一句话能力清单
-
-- 对外暴露 `/v1/chat/completions`、`/v1/responses`、`/v1/messages`（Anthropic）等标准接口
-- 多账号轮询 + 故障转移，规避微软 per-account 限流
-- **每个账号走独立代理 IP**
-- 可创建**带有效期**的 API Key
-- 实时统计每个账号的 **Token 用量（估算）**
-
-下面重点讲你最关心的三个功能。
+⚠️ **合规说明**：本项目是「互通网关」，**不是**绕过鉴权的工具。你必须使用自己有权限的 Microsoft 账号与租户。上游模型可用性、配额、工具、视觉、生图能力，取决于你的账号与微软服务。
 
 ---
 
-## 一、IP 代理功能（重点）
+## 功能总览
 
-**为什么需要**：微软对单个账号有请求频率限制，还会关联同一出口 IP 下的多个账号。给每个账号配独立代理 IP，能分散请求、降低被风控的概率。
+- 💬 **多协议聊天 API**：OpenAI `/v1/chat/completions`、OpenAI Responses `/v1/responses`、Anthropic `/v1/messages`，支持流式 / 多模态 / 工具调用。
+- 🔁 **多账号池与轮询**：多个 M365 账号统一调度，按请求 round-robin，自动分散限流；同一对话内锁定账号保证上下文连贯。
+- 🌐 **每账号独立 IP 代理**（第三节，重点）：每个账号可配独立出口 IP，进一步降低被关联 / 触发风控概率。
+- 🔑 **API Key 与定时有效期**（第四节，重点）：可创建带「永久 / N 天到期」的访问密钥，过期自动失效。
+- 📊 **Token 统计估算**（第五节，重点）：在微软不返回 usage 的情况下给出可信的 token 用量参考。
+- 🩺 **限流 / 健康自愈**：实时显示每个账号的鉴权 / 限流状态，429 自动冷却并切到健康号。
+- 📜 **运行日志 / 设置 / Web 控制台**：内置管理员后台，五页式管理界面，开箱即用。
 
-**作用范围**：填了代理的账号，其 ChatHub WebSocket 连接和令牌刷新都走该代理。**不填 = 直连**。
+---
 
-### 代理地址填写规则
+## 一、聊天 API 兼容层
 
-系统会自动识别以下格式：
+把 ChatHub 私有协议转成业界通用接口，客户端无需关心微软内部实现：
 
-| 格式 | 说明 |
+| 接口 | 鉴权 | 说明 |
+|---|---|---|
+| `POST /v1/chat/completions` | `Bearer` / `X-API-Key` | OpenAI 兼容，支持 `stream` 流式、`session_key` 会话保持、`tools` 工具调用 |
+| `POST /v1/responses` | 同上 | OpenAI Responses 兼容 |
+| `POST /v1/messages` | `x-api-key` | Anthropic 兼容 |
+
+- **流式输出**：`stream:true` 时按 SSE 逐块返回。
+- **多模态**：图文混输随上游账号能力开放。
+- **工具调用**：网关层做协议转换，把 OpenAI / Anthropic 工具格式转成 ChatHub 工具调用。
+- **会话保持**：稳定传同一个 `session_key` 即可让同一段对话绑定到同一个上游会话（ConversationID / SessionID），刷新页面或换客户端都不丢上下文。
+
+**模型路由**（公开 ID 为网关别名，实际能力由微软侧决定）：
+
+| 公开模型 | 上游口吻 |
 |---|---|
-| `host:port` | 只写 `IP:端口`、不带协议头 → 默认按 **SOCKS5** |
-| `socks5://host:port` | 标准 SOCKS5 |
-| `socks5://user:pass@host:port` | SOCKS5 带账号密码（标准写法） |
-| `socks5://host:port:user:pass` | SOCKS5 带账号密码（**非标准**，部分服务商常用） |
-| `socks5h://host:port` | SOCKS5，由远程代理解析 DNS |
-| `socks4://host:port` | SOCKS4 |
-| `socks4://user:pass@host:port` | SOCKS4 带账号密码 |
-| `http://host:port` | HTTP 代理（明文 CONNECT） |
-| `http://user:pass@host:port` | HTTP 代理带账号密码 |
-| `http://host:port:user:pass` | HTTP 代理带账号密码（**非标准**，部分服务商常用） |
-| `https://host:port` | 真正用 TLS 包裹的代理（如 `12.180.8.60:443`） |
-
-**两个易错点**：
-
-- 很多代理服务商宣传"HTTPS 代理"，实际只是个 HTTP CONNECT 端点 → 请填 `http://`，填 `https://` 反而可能连不上。
-- 密码里含 `@`、`:` 等特殊字符时，优先用"非标准四段式" `host:port:user:pass`，避免解析错乱。
-
-**怎么验证**：账号行点「测试」可先验证代理是否可用（返回出口 IP 和延迟）；表格上方「🔍 一键检测」可批量探测所有已配代理的账号。
-
-> 说明：HTTPS 代理只会对"连到代理这一段"跳过证书校验（支持过期/自签证书，和指纹浏览器行为一致），目标站（Microsoft）的 TLS 仍正常校验。
+| `gpt-5.5` | `Gpt_5_5_Chat` |
+| `gpt-5.5-reasoning` | `Gpt_5_5_Reasoning` |
+| `gpt-5.6-reasoning` | `Gpt_5_6_Reasoning` |
+| `claude-sonnet` | `Claude_Sonnet` |
+| `claude-sonnet-reasoning` | `Claude_Sonnet_Reasoning` |
 
 ---
 
-## 二、API Key 定时有效期
+## 二、账号池与多账号调度
 
-创建 Key 时可选择：
-
-- **永久有效**：`days` 传 0 或留空
-- **自定义天数**：填 N 天，到期时间 = 创建时刻 + N 天
-
-到期后的 Key 在调用任何 `/v1/*` 接口时会返回 `401`，但在后台列表里仍然可见（标注"已过期"）。
-
-后台支持随时改有效期：点「改有效期」→ 填天数 → 保存。`days=0` 即改回永久有效。
-
-> 典型用途：临时给同事/客户开 Key，到期自动失效，不用手动回收。
+- **添加账号**：Web 控制台「添加账号」走内置 PKCE OAuth 流程，登录微软即完成授权，令牌缓存到本地 `data/`。
+- **刷新令牌 / 删除账号**：每行可手动「刷新令牌」（延长有效期）；「删除」不可撤销，且会**一并清除该账号绑定的所有 `session_key` 会话映射**（避免删号后旧会话永久报错）。
+- **多账号轮询**：未指定账号且无会话绑定时，请求在全部在线账号间 **round-robin**；同一 `session_key` 对话内锁定首次选中的账号，避免回答断片。开放客户端每轮都会重发完整 `messages` 历史，即使账号轮换模型也能看到全部上下文。
+- **请求次数统计**：每个账号显示请求数，顶部有全账号「请求次数汇总」。计数为内存态，服务重启归零。
+- **限流 / 健康状态**：账号表「限流状态」列实时显示 `正常 / 鉴权失败 / 限流冷却(Ns)`。触发限流的账号进入约 2 分钟冷却、自动退出轮询，并切到健康号（429 故障转移 / 自动自愈）。
 
 ---
 
-## 三、Token 统计与估算说明
+## ⭐ 三、IP 代理（重点）
 
-**为什么是"估算"**：微软 ChatHub 的返回结果里**没有 token 用量字段**，不像 OpenAI 那样直接给你 `usage`。所以这里的 Token 数字是我们自己算出来的，是"估算值"，不是官方计数。
+**用途**：为**每个账号**单独指定出口代理，实现每账号独立 IP。ChatHub 的 WebSocket 与该账号的 token 刷新都走对应代理；**不填则直连**。多账号 + 多 IP 能显著降低被微软关联、触发风控的概率。
 
-**怎么算的**（已尽量贴近真实）：
+### 代理填写规则
 
-- 对 `gpt-` 开头的模型，用真正的 **o200k_base** 分词器（词表内嵌、不联网）逐字分词。
-- 对 M365 Copilot 等其它模型，用字符启发式：
-  - 跳过空格/换行；
-  - 英文等 ASCII：约 **4 个字符 = 1 token**（公式 `(长度+3)/4`）；
-  - 中文等其它字符：**1 个字符 = 1 token**。
-- 还把整段请求结构也算进去：每条消息的 role / content / name / 工具调用，加上工具 schema，再加上协议固定开销（每条消息 4 token、每工具 6 token、回复前缀 3 token 等），最后加上模型回复文本。
+在账号行「代理」输入框填写以下任一格式（留空 = 直连）：
 
-这套口径参考了社区通用实现，比单纯"总字数 ÷ 4"准很多，但**仍属估算**，适合看趋势、做配额判断，不要当成精确账单。
+| 填写格式 | 说明 |
+|---|---|
+| `1.2.3.4:1080` | 纯 `host:port`，默认按 **SOCKS5** |
+| `socks5://1.2.3.4:1080` | SOCKS5 标准写法 |
+| `socks5://user:pass@1.2.3.4:1080` | SOCKS5 带账号密码（标准三段式） |
+| `socks5://1.2.3.4:1080:user:pass` | SOCKS5 带账号密码（**非标准四段式**，部分服务商常用） |
+| `socks5h://1.2.3.4:1080` | SOCKS5 + 远程 DNS（域名由代理解析） |
+| `socks4://1.2.3.4:1080` | SOCKS4（可带 `user:pass@`） |
+| `http://1.2.3.4:8080` | HTTP 代理（CONNECT 隧道） |
+| `http://user:pass@1.2.3.4:8080` | HTTP 代理带账号密码 |
+| `https://1.2.3.4:8443` | HTTPS 代理（真 TLS；仅对「连代理」这一段跳过证书校验，目标站仍正常校验） |
 
-**统计口径**：
+> 协议识别源码见 `internal/proxy/proxy.go`：`http(s)://` 与 `socks5/socks5h/socks4://` 均支持标准三段式 `[user:pass@]host:port` 与非标准四段式 `host:port:user:pass`；无 scheme 默认 SOCKS5。
 
-- 每个账号独立累计「发送 Token / 接收 Token」；
-- 顶部汇总「总请求数 / 总发送 / 总接收」；
-- 数字过大时自动用 `k` / `M` 单位显示。
+### ⚠️ 两个易错点
+
+1. **很多标着「HTTPS 代理」的服务，其实只是 HTTP CONNECT 端点** —— 这种应填 `http://`，填 `https://` 反而连不上（`https://` 仅用于真正以 TLS 监听客户端端口的代理）。
+2. **密码里含 `@` 或 `:` 时**，标准三段式 `user:pass@host:port` 会解析错；请用四段式 `host:port:user:pass`（user / pass 里别再带 `:`）。
+
+### 连通性测试
+
+- **单账号测试**：填好代理点「测试」，返回出口 IP 与延迟（绿 ✓ / 红 ✗）。
+- **一键批量检测**：账号列表「🔍 一键检测」并发探测所有已配代理的账号，每行内联结果，顶部横幅汇总「成功 N / 失败 M」，快速定位失效代理。
+- **HTTPS 代理证书**：仅对「连到代理」这一段 `InsecureSkipVerify`（与指纹浏览器行为一致，兼容过期 / 自签代理证书）；目标站（Microsoft / ipify）TLS 仍正常校验。
 
 ---
 
-## 快速开始
+## ⭐ 四、API Key 与定时有效期（重点）
+
+访问密钥是给客户端（OpenAI / Claude SDK、curl、Agent 框架）调用 `/v1/*` 的凭证，支持 `Authorization: Bearer` 或 `X-API-Key` 两种头。
+
+- **创建**：「访问配置」页填名称 + 有效期。`days > 0` = N 天后到期；`days ≤ 0` = **永久有效**。创建后密钥**仅显示一次**，自动复制到剪贴板，请妥善保存。
+- **改有效期**：任意时刻可点「改有效期」（`PATCH /api/admin/keys`，`days ≤ 0` 改回永久），立即生效、无需重建。
+- **撤销**：点「撤销」即刻失效（不可恢复）。
+- **过期行为**：过期 Key 调用任何 `/v1/*` 返回 `401`，但在后台列表仍可见（标「已过期」）。
+- **存储安全**：密钥以 **hash** 形式存于 `data/api-keys.json`，明文不落盘。
+
+---
+
+## ⭐ 五、Token 统计估算（重点）
+
+微软 ChatHub 的返回里**没有 `usage` 字段**，拿不到精确 token 数，所以这里给出的是**估算值**（参考社区口径，非账单数字）。
+
+- **估算算法**：
+  - 模型名以 `gpt-` 开头 → 用 **o200k_base 真分词器**（tiktoken）逐 token 计数。
+  - 其它模型 → 启发式：英文约 **4 字符 = 1 token**、中文 **1 字 = 1 token**（跳过空格），并对整段请求结构（角色 / 内容 / 工具 schema / 协议开销常量）一并计入，比「裸字符数 ÷ 4」准得多。
+- **统计范围**：分别估算「发送（输入）」与「接收（输出）」token，账号表与顶部汇总卡均显示；**流式与非流式请求都会记账**（早期版本漏记流式，已修复）。
+- **显示单位**：数字过大时用 `k`（千）/ `M`（百万）缩写，便于一眼看懂。
+- **说明**：这是**参考用量**，不能当精确账单；若你要严格计费，请以上游微软账单为准。
+
+---
+
+## 六、运行日志
+
+「运行日志」页拉取 `/api/admin/debug/logs`，可按等级（silent / error / warn / info / debug）过滤，显示每条请求的方法、路径、状态码、耗时与请求 ID，便于排查问题。
+
+## 七、设置
+
+「设置」页可在线修改运行参数（标「重启生效」的项需重启服务）：
+
+| 分组 | 项 |
+|---|---|
+| 工具 | 每轮最大工具调用数、最大工具轮次 |
+| 上下文 | 上下文窗口、最大输出 Token |
+| 超时 | 聊天超时、图片超时（秒） |
+| 日志 | 日志等级、调试日志路径 |
+| 运行（重启生效） | 监听地址、账号配置路径、Token 缓存路径、会话缓存路径、OAuth Client ID / Authority / 回调地址 / Scope |
+
+## 八、Web 控制台与登录
+
+内置管理员后台，五页式：**账号池 / 添加账号 / 访问配置 / 运行日志 / 设置**。
+- 首次用 `secrets/m365_admin_password` 里的管理员密码登录（Cookie 鉴权，非 token）。
+- 根路由 `/` 设了 `Cache-Control: no-cache`，改完前端立即生效、不会卡旧页。
+
+---
+
+## 快速开始（Docker，推荐）
 
 ```bash
 git clone https://github.com/shenping1200/m365-copilot-bridge.git
 cd m365-copilot-bridge
-docker compose build && docker compose up -d
+mkdir -p data secrets
+printf '%s\n' '换成你自己的长随机管理员密码' > secrets/m365_admin_password
+chmod 600 secrets/m365_admin_password
+docker compose build
+docker compose up -d
 ```
 
-打开 `http://127.0.0.1:4141/` → 登录 → 完成 Microsoft 授权 → 在后台创建 API Key。
-
-调用示例：
+默认监听 `127.0.0.1:4141` → 浏览器打开 `http://127.0.0.1:4141/` → 登录 → 完成微软授权 → 在「访问配置」创建 Key → 用 Key 调 `/v1`。
 
 ```bash
 curl http://127.0.0.1:4141/v1/chat/completions \
-  -H 'Authorization: Bearer 你的KEY' \
+  -H 'Authorization: Bearer YOUR_KEY' \
   -H 'Content-Type: application/json' \
   -d '{"model":"gpt-5.6-reasoning","messages":[{"role":"user","content":"你好"}],"stream":true}'
 ```
 
+**持久化目录**（务必备份，含凭据）：
+`./data/accounts.json`（OAuth 缓存）、`./data/token-cache.json`、`/data/sessions.json`、`/data/api-keys.json`、`secrets/m365_admin_password`。
+
+---
+
+## 配置项（环境变量）
+
+| 变量 | 默认 | 用途 |
+|---|---|---|
+| `M365_LISTEN` | `127.0.0.1:4141` | 监听地址 |
+| `M365_ADMIN_PASSWORD_FILE` | unset | 管理员密码文件 |
+| `M365_CHAT_TIMEOUT_SECONDS` | `120` | 聊天超时 |
+| `M365_IMAGE_TIMEOUT_SECONDS` | `150` | 图片超时 |
+| `M365_MAX_TOOL_ROUNDS` | `16` | 最大工具轮次 |
+| `M365_MAX_TOOL_CALLS_PER_TURN` | `1` | 每轮工具调用上限 |
+| `M365_CONTEXT_WINDOW` | `128000` | 上下文窗口 |
+| `M365_MAX_OUTPUT_TOKENS` | `16384` | 最大输出 token |
+
+（其余路径类见「设置」页与 `.env.example`）
+
+---
+
 ## 安全提示
 
-- 默认只监听本地 `127.0.0.1:4141`，对外暴露前务必加 TLS 和访问控制。
-- 妥善保管 `secrets/`（管理员密码）与 `data/`（账号、token 缓存），不要提交或外泄。
-- 仅使用你有权限的账号。
+- 默认只绑 localhost；对外暴露前务必加 **TLS 与访问控制层**。
+- 首次部署立即改管理员密码。
+- `data/`、`secrets/` 含凭据，绝不提交、不贴日志 / 截图。
+- 仅使用你有权限的账号与租户。
 
 ## License
 
