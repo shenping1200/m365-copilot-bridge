@@ -1,100 +1,106 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Copilot Bridge</title><style>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Copilot Bridge</title>
+<style>
 :root{
-  --bg:#f5f6fa; --surface:#ffffff; --surface-2:#f8fafc;
-  --line:#e6e8ef; --line-2:#eef0f5;
-  --text:#1e2430; --muted:#6b7280; --muted-2:#9aa3b2;
-  --indigo:#6366f1; --indigo-ink:#4338ca; --indigo-soft:#eef0ff;
-  --cyan:#22d3ee; --emerald:#10b981; --emerald-soft:#ecfdf5;
-  --rose:#f43f5e; --rose-soft:#fff1f3; --amber:#f59e0b;
-  --radius:14px; --sidebar:248px;
-  --font:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,"Helvetica Neue",sans-serif;
+  --bg:#f6f7fb; --surface:#ffffff; --surface-2:#fbfbfd; --line:#e9ebf0; --line-2:#f0f1f5;
+  --text:#0f172a; --muted:#64748b; --muted-2:#94a3b8;
+  --indigo:#4f46e5; --indigo-soft:#eef2ff; --indigo-ink:#4338ca;
+  --emerald:#059669; --emerald-soft:#ecfdf5; --amber:#d97706; --amber-soft:#fffbeb;
+  --rose:#e11d48; --rose-soft:#fff1f3; --sky:#0ea5e9; --sky-soft:#f0f9ff; --cyan:#22d3ee;
+  --radius:16px; --radius-sm:10px; --shadow:0 1px 2px rgba(15,23,42,.04),0 8px 24px -12px rgba(15,23,42,.12);
+  --sidebar:256px; --font:"Inter","Segoe UI",system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
-a{color:var(--indigo);text-decoration:none}a:hover{text-decoration:underline}
-button{font:inherit;cursor:pointer}
+button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit}
+a{color:var(--indigo);text-decoration:none}
+code{font-family:ui-monospace,Menlo,monospace}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#d8dce4;border-radius:8px;border:2px solid var(--bg)}
+::-webkit-scrollbar-thumb:hover{background:#c3c9d4}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--indigo);outline-offset:1px}
-code{background:var(--surface-2);padding:1px 5px;border-radius:5px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
 ::selection{background:#c7d2fe}
-::-webkit-scrollbar{width:10px;height:10px}
-::-webkit-scrollbar-thumb{background:#d3d7e0;border-radius:8px;border:2px solid var(--bg)}
-::-webkit-scrollbar-thumb:hover{background:#b9bfcc}
 
 /* layout */
 .app{display:flex;min-height:100vh}
-.sidebar{width:var(--sidebar);flex-shrink:0;background:linear-gradient(180deg,#0f172a 0%,#111827 55%,#0b1220 100%);color:#cbd5e1;display:flex;flex-direction:column;padding:22px 14px;position:sticky;top:0;height:100vh}
-.logo{display:flex;align-items:center;gap:12px;font-size:16px;font-weight:600;padding:0 8px 24px;color:#fff}
-.logo-mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#22d3ee);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;box-shadow:0 6px 16px -6px rgba(99,102,241,.7)}
-.nav-label{font-size:11px;font-weight:600;text-transform:uppercase;color:#64748b;padding:0 12px;margin:14px 0 6px;letter-spacing:.05em}
-.nav{display:flex;flex-direction:column;gap:4px}
-.nav button{width:100%;text-align:left;background:transparent;color:#cbd5e1;border:0;border-radius:9px;padding:9px 12px;display:flex;align-items:center;gap:10px;transition:.15s;font-size:13.5px}
-.nav button:hover{background:rgba(255,255,255,.07);color:#fff}
-.nav button.active{background:rgba(99,102,241,.18);color:#fff;font-weight:600;position:relative}
-.nav button.active::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;background:#818cf8;border-radius:0 3px 3px 0}
-.sidebar-foot{margin-top:auto;color:#64748b;font-size:11px;padding:14px 12px 0;border-top:1px solid rgba(255,255,255,.08)}
-.sidebar-foot span{color:#94a3b8;font-weight:600}
+.sidebar{width:var(--sidebar);flex-shrink:0;background:linear-gradient(180deg,#0f172a 0%,#111827 60%,#0b1220 100%);color:#cbd5e1;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;padding:20px 14px}
+.brand{display:flex;align-items:center;gap:12px;padding:6px 8px 22px}
+.brand-mark{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#6366f1,#22d3ee);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:15px;box-shadow:0 6px 16px -6px rgba(99,102,241,.7)}
+.brand-txt b{display:block;color:#fff;font-size:15px;letter-spacing:.2px}
+.brand-txt span{font-size:11px;color:#7c8aa5}
+.nav-group-label{font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5b6679;padding:14px 12px 6px}
+.nav{display:flex;flex-direction:column;gap:3px}
+.nav button{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;color:#aeb8c9;font-size:13.5px;font-weight:500;transition:.15s;position:relative}
+.nav button svg{width:18px;height:18px;flex-shrink:0;opacity:.85}
+.nav button:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav button.active{background:linear-gradient(90deg,rgba(99,102,241,.22),rgba(99,102,241,.04));color:#fff}
+.nav button.active::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;background:#818cf8;border-radius:0 3px 3px 0}
+.side-foot{margin-top:auto;padding:14px 10px 0;border-top:1px solid rgba(255,255,255,.07);font-size:11px;color:#69748a;display:flex;align-items:center;gap:8px}
+.side-foot .dot{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 0 3px rgba(52,211,153,.18)}
+.side-foot b{color:#cbd5e1}
 
 .main{flex:1;min-width:0;display:flex;flex-direction:column}
-.topbar{height:62px;background:rgba(255,255,255,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 26px;position:sticky;top:0;z-index:20}
-.topbar h1{font-size:18px;font-weight:700}
-.topbar-right{display:flex;align-items:center;gap:12px}
-#serviceStatus{font-size:13px;color:var(--muted)}
-.content{padding:26px;max-width:1500px;width:100%}
+.topbar{height:64px;background:rgba(255,255,255,.8);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 26px;position:sticky;top:0;z-index:20}
+.topbar .title b{font-size:17px}
+.topbar .title span{display:block;font-size:12px;color:var(--muted)}
+.top-actions{display:flex;align-items:center;gap:10px}
+.search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;width:240px;color:var(--muted)}
+.search input{border:0;outline:0;background:none;font:inherit;color:var(--text);width:100%}
+.search svg{width:16px;height:16px}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 14px;border-radius:10px;font-size:13px;font-weight:600;transition:.15s;border:1px solid var(--line);background:var(--surface);color:var(--text)}
+.btn svg{width:16px;height:16px}
+.btn:hover{background:var(--surface-2);border-color:#d8dce4}
+.btn.primary{background:var(--indigo);border-color:var(--indigo);color:#fff;box-shadow:0 6px 16px -8px rgba(79,70,229,.7)}
+.btn.primary:hover{background:var(--indigo-ink)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.ghost:hover{background:var(--line-2);color:var(--text)}
+.btn.danger{color:var(--rose)}
+.btn.danger:hover{border-color:var(--rose);color:var(--rose);background:var(--rose-soft)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#22d3ee);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
 
-/* pages */
-.page-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:16px;flex-wrap:wrap}
-.page-head h2{font-size:18px;margin-bottom:3px}
-.page-head p{color:var(--muted);font-size:13px}
-.actions{display:flex;gap:8px;align-items:center}
+.content{padding:26px;max-width:1400px;width:100%}
+.page{display:none}
+.page.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
 /* stats */
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:20px}
-.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px 18px;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(16,24,40,.04)}
-.stat::after{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--indigo);border-radius:0 4px 4px 0}
-.stat:nth-child(2)::after{background:var(--cyan)}
-.stat:nth-child(3)::after{background:var(--emerald)}
-.stat:nth-child(4)::after{background:var(--amber)}
-.stat:nth-child(5)::after{background:var(--rose)}
-.stat-label{font-size:12.5px;color:var(--muted);font-weight:500}
-.stat-value{display:block;font-size:26px;font-weight:800;margin-top:8px;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:20px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.stat .ico{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.stat .ico svg{width:20px;height:20px}
+.stat .lbl{font-size:12.5px;color:var(--muted);font-weight:500}
+.stat .val{font-size:27px;font-weight:750;letter-spacing:-.5px;margin-top:3px;font-variant-numeric:tabular-nums}
+.stat .sub{font-size:12px;color:var(--muted-2);margin-top:6px}
+.stat .spark{position:absolute;right:14px;bottom:12px;opacity:.5}
+.ico.indigo{background:var(--indigo-soft);color:var(--indigo)}
+.ico.sky{background:var(--sky-soft);color:var(--sky)}
+.ico.emerald{background:var(--emerald-soft);color:var(--emerald)}
+.ico.amber{background:var(--amber-soft);color:var(--amber)}
 
-/* panels & tables */
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 1px 3px rgba(16,24,40,.04);overflow:hidden;margin-bottom:18px}
-.panel-head{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid var(--line);background:var(--surface-2)}
-.panel-title{font-weight:700;font-size:14px}
-.panel-sub{color:var(--muted);font-size:12px}
+/* panel / table */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:18px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line-2);gap:12px;flex-wrap:wrap}
+.panel-head h3{font-size:15px;font-weight:700}
+.panel-head .sub{font-size:12px;color:var(--muted);font-weight:400;margin-top:2px}
 .table-wrap{overflow:auto;max-height:calc(100vh - 200px)}
-.table{width:100%;border-collapse:collapse;font-size:13px}
-.table th{text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600;padding:11px 14px;border-bottom:1px solid var(--line);background:var(--surface-2);position:sticky;top:0}
-.table td{padding:11px 14px;border-bottom:1px solid var(--line-2);vertical-align:middle}
-.table tbody tr:hover{background:var(--indigo-soft)}
-.table .empty{text-align:center;color:var(--muted-2);padding:30px}
-.account-cell{display:flex;align-items:center;gap:10px}
-.account-table .avatar{width:32px;height:32px;border-radius:9px;background:var(--indigo-soft);color:var(--indigo-ink);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{text-align:left;font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:12px 16px;background:var(--surface-2);border-bottom:1px solid var(--line);white-space:nowrap}
+tbody td{padding:13px 16px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:#fafbff}
+.account-cell{display:flex;align-items:center;gap:11px}
+.account-cell .avatar{width:34px;height:34px;border-radius:9px;background:var(--indigo-soft);color:var(--indigo-ink);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.account-cell b{font-weight:600;font-size:13px}
+.account-cell span{font-size:11.5px;color:var(--muted);display:block}
+.empty{text-align:center;color:var(--muted-2);padding:30px}
 
-/* buttons */
-.btn{background:var(--surface);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:8px 14px;font-size:13px;font-weight:600;transition:.15s}
-.btn:hover{border-color:var(--indigo);color:var(--indigo)}
-.btn.primary{background:linear-gradient(135deg,#6366f1,#4f46e5);border:0;color:#fff;box-shadow:0 4px 12px -4px rgba(99,102,241,.6)}
-.btn.primary:hover{filter:brightness(1.07);color:#fff}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-.primary{color:var(--indigo)}
-.danger{color:var(--rose)}
-.danger:hover{border-color:var(--rose);color:var(--rose);background:var(--rose-soft)}
-
-/* forms */
-.form-panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px;max-width:720px;box-shadow:0 1px 3px rgba(16,24,40,.04)}
-.form-row{margin-bottom:16px}
-.form-row label{display:block;font-weight:600;font-size:13px;margin-bottom:6px}
-.form-row:last-child{margin-bottom:0}
-.input,.setting-input,.log-filter{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:9px;font:inherit;font-size:13px;outline:0;background:var(--surface);color:var(--text)}
-.input:focus,.setting-input:focus{border-color:var(--indigo);box-shadow:0 0 0 3px var(--indigo-soft)}
-.help{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:11px 13px;font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.6}
-.muted{color:var(--muted)}
-
-/* pills / health */
-.hpill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600;border:1px solid transparent}
+/* health pills */
+.hpill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid transparent}
 .hpill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
 .hpill-ok{color:var(--emerald);background:var(--emerald-soft)}
 .hpill-fail{color:var(--rose);background:var(--rose-soft)}
@@ -102,55 +108,298 @@ code{background:var(--surface-2);padding:1px 5px;border-radius:5px;font-family:u
 .status,.health-cell{font-weight:600}
 
 /* proxy */
-.proxy-cell{display:flex;align-items:center;gap:6px;min-width:220px}
-.proxy-input{flex:1;min-width:80px;padding:6px 9px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:12px;outline:0;background:var(--surface)}
+.proxy-cell{display:flex;align-items:center;gap:6px;min-width:230px}
+.proxy-input{flex:1;min-width:80px;padding:6px 9px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:12px;outline:0;background:var(--surface-2)}
+.proxy-input:focus{border-color:var(--indigo);background:#fff}
 .proxy-input-ok{border-color:#a7f3d0}
 .proxy-input-fail{border-color:#fecdd3}
 .proxy-actions{display:flex;gap:5px;align-items:center}
 .proxy-ok{color:var(--emerald);border-color:#a7f3d0;background:var(--emerald-soft)}
 .proxy-fail{color:var(--rose);border-color:#fecdd3;background:var(--rose-soft)}
-.proxy-summary{font-size:12.5px;padding:8px 14px}
+.proxy-summary{font-size:12.5px;padding:8px 18px}
 .proxy-summary-ok{color:var(--emerald)}
 .proxy-summary-fail{color:var(--rose)}
-.test-all-btn{margin-left:8px}
+
+/* row actions */
+.row-act{display:flex;gap:5px;justify-content:flex-end}
+.icon-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--surface);display:inline-flex;align-items:center;justify-content:center;color:var(--muted);transition:.15s}
+.icon-btn svg{width:15px;height:15px}
+.icon-btn:hover{border-color:var(--indigo);color:var(--indigo);background:var(--indigo-soft)}
+.icon-btn.danger:hover{border-color:var(--rose);color:var(--rose);background:var(--rose-soft)}
+
+/* forms */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:7px;color:var(--text)}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:13px;outline:0;background:var(--surface)}
+.field input:focus{border-color:var(--indigo);box-shadow:0 0 0 3px var(--indigo-soft)}
+.field .hint{font-size:11.5px;color:var(--muted);margin-top:6px}
+.form-row{margin-bottom:16px}
+.form-row label{display:block;font-weight:600;font-size:13px;margin-bottom:6px}
+.form-row:last-child{margin-bottom:0}
+.input,.setting-input,.log-filter{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:9px;font:inherit;font-size:13px;outline:0;background:var(--surface);color:var(--text)}
+.input:focus,.setting-input:focus{border-color:var(--indigo);box-shadow:0 0 0 3px var(--indigo-soft)}
+.help{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;padding:11px 13px;font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.6}
+.help code{background:#fff;border:1px solid var(--line);padding:1px 5px;border-radius:5px}
+.muted{color:var(--muted)}
 
 /* keys */
 .key-output{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:var(--surface-2);padding:8px 10px;border-radius:8px;border:1px solid var(--line);word-break:break-all}
-.copy-btn{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:4px 8px;font-size:12px}
+.copy-btn{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:4px 8px;font-size:12px;margin-left:8px}
 .copy-btn:hover{border-color:var(--indigo);color:var(--indigo)}
-.key-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;margin-bottom:10px;background:var(--surface)}
-.key-row .ava{width:38px;height:38px;border-radius:10px;background:var(--indigo-soft);color:var(--indigo-ink);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
-.key-main{flex:1;min-width:0}
-#keyCreated{color:var(--emerald);font-size:12px;font-weight:600}
+
+/* logs */
+.log-table td{font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:nowrap}
+.log-table td:nth-child(3),.log-table td:nth-child(6){white-space:normal;word-break:break-all}
+.log-info{color:var(--sky)}.log-warn{color:var(--amber)}.log-error{color:var(--rose)}
 
 /* modal */
 .modal{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
 .modal.show,.modal.open{display:flex}
 .modal-card{background:var(--surface);border-radius:var(--radius);padding:22px;width:min(440px,100%);box-shadow:0 20px 50px -12px rgba(0,0,0,.4)}
+.modal-card h3{font-size:16px;margin-bottom:6px}
+.modal-card .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
 
 /* notice */
 .notice{position:fixed;bottom:22px;right:22px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--indigo);border-radius:10px;padding:12px 16px;font-size:13px;box-shadow:0 10px 30px -8px rgba(0,0,0,.25);opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none;z-index:60}
 .notice.show{opacity:1;transform:none}
 
-/* logs */
-.log-table td{font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:nowrap}
-.log-table td:nth-child(3),.log-table td:nth-child(6){white-space:normal;word-break:break-all}
-.log-info{color:var(--indigo)}
-.log-warn{color:var(--amber)}
-.log-error{color:var(--rose)}
-.log-filter{width:auto;display:inline-block}
-.auth-box{border:1px solid var(--line);border-radius:9px;padding:10px;background:var(--surface-2);margin-top:10px;font-family:ui-monospace,Menlo,monospace;font-size:12px;word-break:break-all}
-
 /* login */
-#login{position:fixed;inset:0;background:linear-gradient(135deg,#0f172a,#1e293b);z-index:20;display:flex;align-items:center;justify-content:center}
-#login .form-panel{width:min(380px,calc(100vw - 32px));border:0;box-shadow:0 30px 60px -15px rgba(0,0,0,.5)}
-#login .logo{justify-content:center;padding:0 0 22px;color:#fff}
-#login .logo-mark{width:42px;height:42px;font-size:18px}
-#login .muted{color:#94a3b8}
-#loginError{color:#fca5a5;font-size:12px;margin-top:10px}
+#login{position:fixed;inset:0;background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);z-index:90;display:flex;align-items:center;justify-content:center}
+.login-card{width:min(380px,calc(100vw - 32px));background:var(--surface);border-radius:18px;padding:30px;box-shadow:0 30px 60px -15px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.06)}
+.login-card .brand{padding:0 0 22px}
+.login-card h2{font-size:20px;margin:0 0 5px;color:var(--text)}
+.login-card .input{margin-top:12px}
+#loginError{color:var(--rose);font-size:12px;margin-top:10px;min-height:16px}
 
-@media(max-width:760px){.sidebar{position:fixed;transform:translateX(-100%);transition:.2s;z-index:50}.sidebar.open{transform:none}.content{padding:16px}.topbar{padding:0 14px}.stats{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}}
-</style></head><body><div id="login" style="position:fixed;inset:0;background:#f6f7f9;z-index:20;display:flex;align-items:center;justify-content:center"><div class="form-panel" style="width:min(380px,calc(100vw - 32px))"><div class="logo" style="padding:0 0 22px"><div class="logo-mark">CB</div><span>Copilot Bridge</span></div><h2 style="margin:0 0 5px">管理员登录</h2><p class="muted">请输入管理员密码以进入控制台。</p><div class="help" style="margin:12px 0 0;padding:10px;background:#fff8e1;border:1px solid #f0d98a;border-radius:6px"><b>默认密码：</b><code>admin123</code><br><span>首次登录后请立即修改管理员密码。</span></div><form onsubmit="login(event)"><input id="adminPassword" class="input" type="password" autocomplete="current-password" placeholder="管理员密码" autofocus><button class="btn primary" style="width:100%;margin-top:14px">登录</button></form><div id="loginError" style="color:var(--red);font-size:12px;margin-top:10px"></div></div></div><div class="app" id="app" style="display:none"><aside class="sidebar"><div class="logo"><div class="logo-mark">CB</div><span>Copilot Bridge</span></div><div class="nav-label">管理</div><div class="nav"><button class="active" data-page="pool" onclick="showPage('pool')">◉ <span>账号池</span></button><button data-page="add" onclick="showPage('add')">＋ <span>添加账号</span></button><button data-page="keys" onclick="showPage('keys')">▣ <span>访问配置</span></button><button data-page="logs" onclick="showPage('logs')">≡ <span>运行日志</span></button></div><div class="nav-label">系统</div><div class="nav"><button data-page="settings" onclick="showPage('settings')">⚙ <span>设置</span></button></div><div class="sidebar-foot">Copilot Bridge<br><span>v0.1.0</span></div></aside><main class="main"><header class="topbar"><h1 id="topTitle">账号池</h1><div class="topbar-right"><span id="serviceStatus">检查中</span><button class="btn" onclick="loadAccounts()">刷新</button></div></header><div class="content"><section id="page-pool"><div class="page-head"><div><h2>账号池</h2><p>管理已授权的 Microsoft 账号。</p></div><button class="btn primary" onclick="showPage('add')">添加账号</button></div><div class="stats"><div class="stat" style="border-left:3px solid var(--accent-blue)"><div class="stat-label">请求次数汇总</div><span class="stat-value" id="requestTotal" style="color:var(--accent-blue)">0</span></div><div class="stat"><div class="stat-label">Token 统计（估算）</div><div style="display:flex;flex-direction:column;gap:3px;margin-top:7px"><span style="color:var(--accent-blue);font-weight:700;font-size:15px">↑ 发送 <span id="tokenIn">0</span></span><span style="color:#2e9e5b;font-weight:700;font-size:15px">↓ 接收 <span id="tokenOut">0</span></span></div><div class="muted" style="font-size:11px;margin-top:5px">输入+输出合计 <span id="tokenTotal">0</span> · 本地估算值</div></div><div class="stat"><span class="stat-label">账号总数</span><b class="stat-value" id="total">—</b></div><div class="stat"><span class="stat-label">在线账号</span><b class="stat-value" id="online">—</b></div><div class="stat"><span class="stat-label">服务状态</span><b class="stat-value" id="health">—</b></div></div><div class="panel"><div class="panel-head"><span class="panel-title">账号列表</span><span class="panel-sub" id="lastUpdate"></span></div><div id="proxyTestSummary" class="proxy-summary muted"></div><div class="table-wrap"><table class="table account-table"><thead><tr><th>账号</th><th>状态</th><th>更新时间</th><th>请求次数</th><th>代理<button id="testAllProxiesBtn" class="btn test-all-btn" onclick="testAllProxies()" title="一键测试所有账号的代理连通性">一键检测</button></th><th>限流状态</th><th></th></tr></thead><tbody id="accountRows"><tr><td colspan="7" class="empty">加载中…</td></tr></tbody></table></div></div></section><section id="page-add" style="display:none"><div class="page-head"><div><h2>添加账号</h2><p>选择一种 Microsoft OAuth 授权方式。</p></div></div><div class="form-panel"><div class="form-row"><label>浏览器授权（PKCE）</label><div class="help">点击后打开 Microsoft 登录。登录完成后，复制浏览器地址栏中的完整回调地址，粘贴到下面提交。</div><button class="btn primary" style="margin-top:10px" onclick="startPKCE()">生成并打开授权页面</button></div><div class="form-row"><label>回调地址 / 授权码</label><input class="input" id="callbackInput" placeholder="粘贴完整回调地址，或输入 code=...&state=..."><div class="help">回调地址通常包含 <code>code</code> 和 <code>state</code> 参数。</div><button class="btn" style="margin-top:10px" onclick="submitCallback()">提交回调并添加账号</button></div><div id="authBox"></div></div></section><section id="page-keys" style="display:none"><div class="page-head"><div><h2>访问配置</h2><p>API Key、接口地址与调用权限集中管理。</p></div><button class="btn primary" onclick="openKeyModal()">新建 API Key</button></div><div class="panel"><div class="panel-head"><span class="panel-title">API Keys</span><span class="panel-sub">仅在创建时显示完整密钥</span></div><div class="table-wrap"><table class="table"><thead><tr><th>名称</th><th>前缀</th><th>创建时间</th><th>最近使用</th><th>有效期</th><th>状态</th><th></th></tr></thead><tbody id="keyRows"><tr><td colspan="7" class="empty">加载中…</td></tr></tbody></table></div></div><div class="form-panel" style="margin-top:16px"><div class="form-row"><label>调用方式</label><div class="help"><code>Authorization: Bearer m365_...</code> 或 <code>X-API-Key: m365_...</code></div></div><div class="form-row"><label>OpenAI Base URL</label><input class="input" id="baseUrl2" readonly></div><div class="actions"><button class="btn danger" onclick="logout()">退出登录</button></div></div></section><section id="page-logs" style="display:none"><div class="page-head"><div><h2>运行日志</h2><p>查看 API 请求、响应状态与耗时。日志内容遵循当前日志等级设置。</p></div><div class="actions"><select id="logLevelFilter" class="input log-filter" onchange="loadLogs()"><option value="">全部等级</option><option value="error">错误</option><option value="warn">警告</option><option value="info">信息</option></select><button class="btn" onclick="loadLogs()">刷新日志</button></div></div><div class="panel"><div class="panel-head"><span class="panel-title">请求记录</span><span class="panel-sub" id="logSummary"></span></div><div class="table-wrap"><table class="table log-table"><thead><tr><th>等级</th><th>时间</th><th>请求</th><th>状态</th><th>耗时</th><th>请求 ID</th></tr></thead><tbody id="logRows"><tr><td colspan="6" class="empty">加载中…</td></tr></tbody></table></div></div></section><section id="page-settings" style="display:none"><div class="page-head"><div><h2>设置</h2><p>工具调度、模型限制与服务运行参数。</p></div><button class="btn primary" onclick="saveSettings()">保存设置</button></div><div class="form-panel"><div class="form-row"><label>接口地址</label><input class="input" id="baseUrl" readonly></div><div id="settingsForm"></div><div class="help" style="margin-top:14px">标记“重启生效”的配置会持久化保存，但需要重启服务。敏感密钥不会在这里明文展示。</div></div></section></div></main></div><div id="keyModal" class="modal" onclick="if(event.target===this)closeKeyModal()"><div class="modal-card"><h3>创建 API Key</h3><p class="muted">为这个密钥设置一个容易识别的名称。密钥只会完整显示一次。</p><form onsubmit="createKey(event)"><div class="form-row"><label>名称</label><input class="input" id="newKeyName" value="default" autocomplete="off" autofocus></div><div class="form-row"><label>有效期</label><div><label style="display:inline-flex;gap:6px;margin-right:12px"><input type="radio" name="keyExpire" value="0" checked> 永久有效</label><label style="display:inline-flex;gap:6px"><input type="radio" name="keyExpire" value="custom"> 自定义天数</label><input class="input" id="newKeyDays" type="number" min="1" placeholder="天数" style="margin-left:10px;width:120px" oninput="document.querySelector('input[name=keyExpire][value=custom]').checked=true"></div></div><div class="actions"><button type="button" class="btn" onclick="closeKeyModal()">取消</button><button class="btn primary">创建并复制</button></div></form><div id="keyCreated" style="display:none"><div class="key-output"><code id="newKeyValue"></code><button class="btn copy-btn" onclick="copyCreatedKey()">复制</button></div><div class="help">已尝试写入系统剪贴板。请将此密钥保存到密码管理器中。</div><div class="actions" style="margin-top:16px"><button class="btn primary" onclick="closeKeyModal()">完成</button></div></div></div></div><div id="notice" class="notice"></div><script>
+/* per-account token split */
+.token-split{display:flex;align-items:center;gap:14px}
+.tnum{font-variant-numeric:tabular-nums;font-weight:600;font-size:12.5px;white-space:nowrap}
+.tnum .lab{font-weight:700;font-size:11px;margin-right:3px}
+.tnum .lab.up{color:var(--emerald)}
+.tnum .lab.down{color:var(--rose)}
+
+@media(max-width:860px){.sidebar{position:fixed;transform:translateX(-100%);transition:.2s;z-index:50}.sidebar.open{transform:none}.search{width:150px}.topbar{padding:0 14px}.content{padding:16px}}
+</style>
+</head>
+<body>
+
+<!-- ===== Login ===== -->
+<div id="login">
+  <div class="login-card">
+    <div class="brand">
+      <div class="brand-mark">CB</div>
+      <div class="brand-txt"><b>Copilot Bridge</b><span>M365 Copilot 网关</span></div>
+    </div>
+    <h2>管理员登录</h2>
+    <p class="muted">请输入管理员密码以进入控制台。</p>
+    <form onsubmit="login(event)">
+      <input id="adminPassword" class="input" type="password" autocomplete="current-password" placeholder="管理员密码" autofocus>
+      <button class="btn primary" style="width:100%;margin-top:14px">登录</button>
+    </form>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<!-- ===== App ===== -->
+<div class="app" id="app" style="display:none">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">CB</div>
+      <div class="brand-txt"><b>Copilot Bridge</b><span>M365 Copilot 网关</span></div>
+    </div>
+    <div class="nav-group-label">主菜单</div>
+    <nav class="nav">
+      <button class="active" data-page="pool" onclick="showPage('pool')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        账号池</button>
+      <button data-page="add" onclick="showPage('add')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+        添加账号</button>
+      <button data-page="keys" onclick="showPage('keys')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="12" r="4"/><path d="M12 12h9M16 9v6"/></svg>
+        访问配置</button>
+      <button data-page="logs" onclick="showPage('logs')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h11l3 3v13H5z"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+        运行日志</button>
+    </nav>
+    <div class="nav-group-label">系统</div>
+    <nav class="nav">
+      <button data-page="settings" onclick="showPage('settings')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>
+        设置</button>
+    </nav>
+    <div class="side-foot"><span class="dot"></span><span id="serviceStatus">检查中</span></div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="title"><b id="topTitle">账号池</b><span id="topSub">M365 Copilot 账号与流量总览</span></div>
+      <div class="top-actions">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+          <input id="q" placeholder="搜索账号 / 邮箱…">
+        </div>
+        <button class="btn" id="refreshBtn" onclick="loadAccounts()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg>
+          刷新</button>
+        <div class="avatar">管</div>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- ===== 账号池 ===== -->
+      <section class="page active" id="page-pool">
+        <div class="stats">
+          <div class="stat">
+            <div class="ico indigo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg></div>
+            <div class="lbl">请求总数</div>
+            <div class="val" id="requestTotal">—</div>
+            <div class="sub">累计 API 请求</div>
+            <svg class="spark" width="60" height="22" viewBox="0 0 60 22" fill="none" stroke="#818cf8" stroke-width="2"><path d="M0 18 12 14 24 16 36 9 48 11 60 4"/></svg>
+          </div>
+          <div class="stat">
+            <div class="ico sky"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div>
+            <div class="lbl">Token 发送（估算）</div>
+            <div class="val" id="tokenIn">—</div>
+            <div class="sub">输入用量 · 合计 <span id="tokenTotal">—</span></div>
+            <svg class="spark" width="60" height="22" viewBox="0 0 60 22" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M0 16 12 12 24 13 36 7 48 9 60 5"/></svg>
+          </div>
+          <div class="stat">
+            <div class="ico emerald"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div>
+            <div class="lbl">Token 接收（估算）</div>
+            <div class="val" id="tokenOut">—</div>
+            <div class="sub">输出用量</div>
+            <svg class="spark" width="60" height="22" viewBox="0 0 60 22" fill="none" stroke="#34d399" stroke-width="2"><path d="M0 15 12 13 24 10 36 12 48 8 60 9"/></svg>
+          </div>
+          <div class="stat">
+            <div class="ico amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M16 8a3 3 0 0 1 0 6M21 20c0-2.5-2-4-5-4"/></svg></div>
+            <div class="lbl">活跃账号</div>
+            <div class="val"><span id="online">—</span></div>
+            <div class="sub">共 <span id="total">—</span> 个</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>账号列表</h3>
+              <div class="sub">每个账号的代理、限流状态与流量一览 · 服务 <span id="health">—</span> · <span id="lastUpdate">—</span></div>
+            </div>
+            <div style="display:flex;gap:10px">
+              <button class="btn" id="testAllProxiesBtn" onclick="testAllProxies()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+                一键检测代理</button>
+              <button class="btn primary" data-goto="add" onclick="showPage('add')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                添加账号</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>账号</th><th>状态</th><th>代理</th><th>限流状态</th><th>请求数</th><th>Token（发送 / 接收）</th><th style="text-align:right">操作</th>
+              </tr></thead>
+              <tbody id="accountRows"><tr><td colspan="7" class="empty">加载中…</td></tr></tbody>
+            </table>
+          </div>
+          <div id="proxyTestSummary" class="proxy-summary muted"></div>
+        </div>
+      </section>
+
+      <!-- ===== 添加账号 ===== -->
+      <section class="page" id="page-add" style="display:none">
+        <div class="panel">
+          <div class="panel-head"><div><h3>添加 M365 账号</h3><div class="sub">通过 Microsoft OAuth（PKCE）授权接入</div></div></div>
+          <div class="form-grid">
+            <div class="field"><label>浏览器授权（PKCE）</label><div class="help">点击后打开 Microsoft 登录。登录完成后，复制浏览器地址栏中的完整回调地址，粘贴到下面提交。</div><button class="btn primary" style="margin-top:10px" onclick="startPKCE()">生成并打开授权页面</button></div>
+            <div class="field"><label>回调地址 / 授权码</label><input class="input" id="callbackInput" placeholder="粘贴完整回调地址，或输入 code=...&state=..."><div class="help">回调地址通常包含 <code>code</code> 和 <code>state</code> 参数。</div><button class="btn" style="margin-top:10px" onclick="submitCallback()">提交回调并添加账号</button></div>
+          </div>
+          <div id="authBox"></div>
+        </div>
+      </section>
+
+      <!-- ===== 访问配置 ===== -->
+      <section class="page" id="page-keys" style="display:none">
+        <div class="panel">
+          <div class="panel-head"><div><h3>API 密钥</h3><div class="sub">下游客户端以此调用 <code>/v1/chat/completions</code></div></div>
+            <button class="btn primary" onclick="openKeyModal()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              新建 API Key</button></div>
+          <div class="table-wrap">
+            <table class="table"><thead><tr><th>名称</th><th>前缀</th><th>创建时间</th><th>最近使用</th><th>有效期</th><th>状态</th><th></th></tr></thead>
+            <tbody id="keyRows"><tr><td colspan="7" class="empty">加载中…</td></tr></tbody></table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 运行日志 ===== -->
+      <section class="page" id="page-logs" style="display:none">
+        <div class="panel">
+          <div class="panel-head"><div><h3>运行日志</h3><div class="sub">实时滚动的服务日志</div></div>
+            <div class="actions" style="display:flex;gap:8px;align-items:center">
+              <select id="logLevelFilter" class="input log-filter" style="width:auto" onchange="loadLogs()"><option value="">全部等级</option><option value="error">错误</option><option value="warn">警告</option><option value="info">信息</option></select>
+              <button class="btn" onclick="loadLogs()">刷新日志</button>
+            </div></div>
+          <div class="table-wrap">
+            <table class="table log-table"><thead><tr><th>等级</th><th>时间</th><th>请求</th><th>状态</th><th>耗时</th><th>ID</th></tr></thead>
+            <tbody id="logRows"><tr><td colspan="6" class="empty">加载中…</td></tr></tbody></table>
+          </div>
+          <div class="panel-head" style="border-top:1px solid var(--line-2)"><span class="muted" id="logSummary"></span></div>
+        </div>
+      </section>
+
+      <!-- ===== 设置 ===== -->
+      <section class="page" id="page-settings" style="display:none">
+        <div class="panel">
+          <div class="panel-head"><div><h3>系统设置</h3><div class="sub">全局配置、接口地址与令牌有效期</div></div></div>
+          <div class="form-grid">
+            <div class="field"><label>OpenAI 兼容 Base URL</label><input class="input" id="baseUrl" readonly></div>
+            <div class="field"><label>Anthropic 兼容 Base URL</label><input class="input" id="baseUrl2" readonly></div>
+            <div id="settingsForm" style="grid-column:1/-1"></div>
+          </div>
+          <div class="panel-head" style="border-top:1px solid var(--line-2)"><span></span><button class="btn primary" onclick="saveSettings()">保存设置</button></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div><h3>会话</h3></div></div>
+          <div style="padding:18px 20px"><button class="btn danger" onclick="logout()">退出登录</button></div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- ===== Modals ===== -->
+<div id="keyModal" class="modal" onclick="if(event.target===this)closeKeyModal()">
+  <div class="modal-card">
+    <h3>创建 API Key</h3>
+    <p class="muted">为这个密钥设置一个容易识别的名称。密钥只会完整显示一次。</p>
+    <form onsubmit="createKey(event)">
+      <div class="form-row"><label>名称</label><input class="input" id="newKeyName" value="default" autocomplete="off" autofocus></div>
+      <div class="form-row"><label>有效期</label>
+        <div><label style="display:inline-flex;gap:6px;margin-right:12px"><input type="radio" name="keyExpire" value="0" checked> 永久有效</label><label style="display:inline-flex;gap:6px"><input type="radio" name="keyExpire" value="custom"> 自定义天数</label><input class="input" id="newKeyDays" type="number" min="1" placeholder="天数" style="margin-left:10px;width:120px"></div>
+      </div>
+      <div class="form-row" id="keyCreated" style="display:none"><label>已生成密钥（请复制保存）</label><div class="key-output" id="newKeyValue"></div><button type="button" class="copy-btn" onclick="copyCreatedKey()">复制</button></div>
+      <div class="actions"><button type="button" class="btn" onclick="closeKeyModal()">关闭</button></div>
+    </form>
+  </div>
+</div>
+
+<div id="keyExpiryModal" class="modal" onclick="if(event.target===this)closeExpiryModal()">
+  <div class="modal-card">
+    <h3>修改密钥有效期</h3>
+    <input type="hidden" id="expiryKeyId">
+    <div class="form-row"><label>有效期</label>
+      <div><label style="display:inline-flex;gap:6px;margin-right:12px"><input type="radio" name="expMode" value="0" checked> 永久有效</label><label style="display:inline-flex;gap:6px"><input type="radio" name="expMode" value="custom"> 自定义天数</label><input class="input" id="expiryDays" type="number" min="1" placeholder="天数" style="margin-left:10px;width:120px" oninput="document.querySelector('input[name=expMode][value=custom]').checked=true"></div>
+    </div>
+    <div class="actions"><button type="button" class="btn" onclick="closeExpiryModal()">取消</button><button class="btn primary" onclick="setKeyExpiry()">保存</button></div>
+  </div>
+</div>
+
+<div id="notice" class="notice"></div>
+
+<script>
 const $=x=>document.getElementById(x);let timer;const titles={pool:'账号池',add:'添加账号',keys:'访问配置',logs:'运行日志',settings:'设置'};function note(x){$('notice').textContent=x;$('notice').classList.add('show');clearTimeout(timer);timer=setTimeout(()=>$('notice').classList.remove('show'),3500)}function headers(){return {'Content-Type':'application/json'}}async function api(u,o={}){o.headers={...headers(),...(o.headers||{})};const r=await fetch(u,o);let d={};const raw=await r.text();try{d=raw?JSON.parse(raw):{}}catch{d={error:{message:raw}}}if(!r.ok)throw Error(d?.error?.message||raw||`请求失败（${r.status}）`);return d}async function login(e){e.preventDefault();const password=$('adminPassword').value;$('loginError').textContent='';try{await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({password})}).then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d?.error?.message||'登录失败')});$('login').style.display='none';$('app').style.display='flex';loadAccounts()}catch(e){$('loginError').textContent=e.message}}
 async function logout(){await fetch('/api/admin/logout',{method:'POST',credentials:'same-origin'});location.reload()}
 async function checkSession(){try{const d=await fetch('/api/admin/session',{credentials:'same-origin'}).then(r=>r.json());if(d.authenticated){$('login').style.display='none';$('app').style.display='flex';loadAccounts();showPage(sessionStorage.getItem('m365.currentPage')||'pool')}}catch{}}
@@ -183,7 +432,7 @@ function healthBadge(h){
   }
   return '<span class="hpill hpill-ok" title="该账号当前无任何限流/鉴权告警">● 正常</span>';
 }
-async function loadAccounts(){try{const d=await api('/api/accounts'),a=d.accounts||[];$('total').textContent=a.length;$('online').textContent=a.filter(x=>x.status==='online').length;$('requestTotal').textContent=d.totalRequestCount||0;$('tokenIn').textContent=fmtTok(d.totalTokenIn||0);$('tokenOut').textContent=fmtTok(d.totalTokenOut||0);$('tokenTotal').textContent=fmtTok((d.totalTokenIn||0)+(d.totalTokenOut||0));$('accountRows').innerHTML=a.length?a.map(x=>`<tr><td><div class="account-cell"><div class="avatar">${(x.displayName||x.email||'M')[0].toUpperCase()}</div><div><b>${esc(x.displayName||x.email||x.id)}</b><div class="muted">${esc(x.email||'')}</div></div></div></td><td><span class="status"><i></i>${x.status==='online'?'在线':'离线'}</span></td><td class="muted">${x.updatedAt?new Date(x.updatedAt).toLocaleString():'—'}</td><td style="text-align:center;font-weight:600;color:var(--accent-blue)">${x.requestCount||0}</td><td><div class="proxy-cell"><input class="proxy-input" id="proxy-${x.id}" value="${esc(x.proxy||'')}" placeholder="默认直连"><div class="proxy-actions"><button class="btn" onclick="testProxy('${esc(x.id)}')">测试</button> <button class="btn" onclick="saveProxy('${esc(x.id)}')">保存</button></div></div><span id="proxy-status-${x.id}" class="muted"></span></td><td class="health-cell">${healthBadge(x.health)}</td><td><button class="btn" onclick="refreshAccount('${esc(x.id)}',this)">刷新令牌</button> <button class="btn danger" onclick="deleteAccount('${esc(x.id)}',this)">删除</button></td></tr>`).join(''):'<tr><td colspan="7" class="empty">暂无账号，点击“添加账号”开始。</td></tr>';$('lastUpdate').textContent='刚刚更新';$('serviceStatus').textContent='服务正常';try{await api('/api/health');$('health').textContent='正常'}catch{$('health').textContent='待验证'}}catch(e){$('accountRows').innerHTML='<tr><td colspan="7" class="empty">'+e.message+'</td></tr>';$('serviceStatus').textContent='需要配置';$('health').textContent='—'}}async function startPKCE(){try{const d=await api('/api/auth/start');if(d.url){window.open(d.url,'_blank','noopener');$('callbackInput').dataset.state=d.state;$('callbackInput').placeholder='登录完成后粘贴完整回调地址（state 已自动记录）';note('授权页面已打开，完成后粘贴回调地址')}else note('授权链接生成失败')}catch(e){note(e.message)}}async function submitCallback(){const raw=$('callbackInput').value.trim();if(!raw)return note('请粘贴回调地址或授权码');try{let u='/api/auth/callback?';if(raw.includes('://')){u+='url='+encodeURIComponent(raw)}else{const q=raw.replace(/^\?/,'');u+=q;if(!q.includes('state=')&&$('callbackInput').dataset.state)u+='&state='+encodeURIComponent($('callbackInput').dataset.state)}const d=await api(u);note('授权成功，账号已加入号池');$('callbackInput').value='';loadAccounts();showPage('pool')}catch(e){note(e.message)}}function fmtTok(n){if(n==null)return "-";if(n<1000)return String(n);if(n<1e6)return (n/1000).toFixed(n<1e4?1:0)+"k";return (n/1e6).toFixed(n<1e7?1:0)+"M";}
+async function loadAccounts(){try{const d=await api('/api/accounts'),a=d.accounts||[];$('total').textContent=a.length;$('online').textContent=a.filter(x=>x.status==='online').length;$('requestTotal').textContent=d.totalRequestCount||0;$('tokenIn').textContent=fmtTok(d.totalTokenIn||0);$('tokenOut').textContent=fmtTok(d.totalTokenOut||0);$('tokenTotal').textContent=fmtTok((d.totalTokenIn||0)+(d.totalTokenOut||0));$('accountRows').innerHTML=a.length?a.map(x=>`<tr><td><div class="account-cell"><div class="avatar">${(x.displayName||x.email||'M')[0].toUpperCase()}</div><div><b>${esc(x.displayName||x.email||x.id)}</b><div class="muted">${esc(x.email||'')}</div></div></div></td><td><span class="status"><i></i>${x.status==='online'?'在线':'离线'}</span></td><td><div class="proxy-cell"><input class="proxy-input" id="proxy-${x.id}" value="${esc(x.proxy||'')}" placeholder="默认直连"><div class="proxy-actions"><button class="btn" onclick="testProxy('${esc(x.id)}')">测试</button> <button class="btn" onclick="saveProxy('${esc(x.id)}')">保存</button></div></div><span id="proxy-status-${x.id}" class="muted"></span></td><td class="health-cell">${healthBadge(x.health)}</td><td style="text-align:center;font-weight:600;color:var(--accent-blue)">${x.requestCount||0}</td><td><div class="token-split"><span class="tnum"><span class="lab up">↑</span>${fmtTok(x.tokenIn||0)}</span><span class="tnum"><span class="lab down">↓</span>${fmtTok(x.tokenOut||0)}</span></div></td><td><button class="btn" onclick="refreshAccount('${esc(x.id)}',this)">刷新令牌</button> <button class="btn danger" onclick="deleteAccount('${esc(x.id)}',this)">删除</button></td></tr>`).join(''):'<tr><td colspan="7" class="empty">暂无账号，点击“添加账号”开始。</td></tr>';$('lastUpdate').textContent='刚刚更新';$('serviceStatus').textContent='服务正常';try{await api('/api/health');$('health').textContent='正常'}catch{$('health').textContent='待验证'}}catch(e){$('accountRows').innerHTML='<tr><td colspan="7" class="empty">'+e.message+'</td></tr>';$('serviceStatus').textContent='需要配置';$('health').textContent='—'}}async function startPKCE(){try{const d=await api('/api/auth/start');if(d.url){window.open(d.url,'_blank','noopener');$('callbackInput').dataset.state=d.state;$('callbackInput').placeholder='登录完成后粘贴完整回调地址（state 已自动记录）';note('授权页面已打开，完成后粘贴回调地址')}else note('授权链接生成失败')}catch(e){note(e.message)}}async function submitCallback(){const raw=$('callbackInput').value.trim();if(!raw)return note('请粘贴回调地址或授权码');try{let u='/api/auth/callback?';if(raw.includes('://')){u+='url='+encodeURIComponent(raw)}else{const q=raw.replace(/^\?/,'');u+=q;if(!q.includes('state=')&&$('callbackInput').dataset.state)u+='&state='+encodeURIComponent($('callbackInput').dataset.state)}const d=await api(u);note('授权成功，账号已加入号池');$('callbackInput').value='';loadAccounts();showPage('pool')}catch(e){note(e.message)}}function fmtTok(n){if(n==null)return "-";if(n<1000)return String(n);if(n<1e6)return (n/1000).toFixed(n<1e4?1:0)+"k";return (n/1e6).toFixed(n<1e7?1:0)+"M";}
 function esc(x){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}const openAIBaseUrl=location.origin.replace(/\/$/,'')+'/v1';$('baseUrl').value=openAIBaseUrl;$('baseUrl2').value=openAIBaseUrl;checkSession();
 
 async function loadLogs(){try{const d=await api('/api/admin/debug/logs');const filter=$('logLevelFilter').value;const rows=(d.records||[]).filter(x=>!filter||x.level===filter);$('logSummary').textContent=`${rows.length} 条记录`;$('logRows').innerHTML=rows.map(x=>`<tr><td><span class="log-level log-${esc(x.level||'info')}">${esc(x.level||'info')}</span></td><td class="muted">${new Date(x.at).toLocaleString()}</td><td><code>${esc(x.method)} ${esc(x.path)}</code></td><td>${esc(x.status)}</td><td>${esc(x.durationMs)} ms</td><td><code>${esc(x.id)}</code></td></tr>`).join('')||'<tr><td colspan="6" class="empty">暂无日志记录</td></tr>'}catch(e){note(e.message)}}
@@ -191,5 +440,23 @@ const settingFields=[['maxToolCallsPerTurn','每轮最大工具调用数','numbe
 async function loadSettings(){try{const d=await api('/api/admin/settings');const v=d.settings||{};$('settingsForm').innerHTML=settingFields.map(([k,l,t,restart])=>`<div class="form-row"><label>${l}${restart?' <span class="muted">（重启生效）</span>':''}</label>${t==='select'?`<select class="input setting-input" data-key="${k}"><option value="silent" ${v[k]==='silent'?'selected':''}>静默</option><option value="error" ${v[k]==='error'?'selected':''}>错误</option><option value="warn" ${v[k]==='warn'?'selected':''}>警告</option><option value="info" ${v[k]==='info'?'selected':''}>信息</option><option value="debug" ${v[k]==='debug'?'selected':''}>调试</option></select>`:`<input class="input setting-input" data-key="${k}" type="${t}" value="${esc(v[k]??'')}">`}</div>`).join('')}catch(e){note(e.message)}}
 async function saveSettings(){try{const v={};document.querySelectorAll('.setting-input').forEach(x=>v[x.dataset.key]=x.type==='number'?Number(x.value):x.value);await api('/api/admin/settings',{method:'PUT',body:JSON.stringify(v)});note('设置已保存；重启项将在服务重启后生效')}catch(e){note(e.message)}}
 function openExpiryModal(id){$('expiryKeyId').value=id;$('keyExpiryModal').classList.add('open');document.querySelector('input[name=expMode][value=0]').checked=true;$('expiryDays').value='';setTimeout(()=>$('expiryDays').focus(),50)}function closeExpiryModal(){$('keyExpiryModal').classList.remove('open')}async function setKeyExpiry(){const id=$('expiryKeyId').value;const m=document.querySelector('input[name=expMode]:checked');let days=0;if(m&&m.value==='custom'){days=parseInt($('expiryDays').value,10)||0}try{await api('/api/admin/keys',{method:'PATCH',body:JSON.stringify({id,days})});note('密钥有效期已更新');closeExpiryModal();loadKeys()}catch(e){note(e.message)}}
-</script><div id="keyExpiryModal" class="modal" onclick="if(event.target===this)closeExpiryModal()"><div class="modal-card"><h3>修改密钥有效期</h3><input type="hidden" id="expiryKeyId"><div class="form-row"><label>有效期</label><div><label style="display:inline-flex;gap:6px;margin-right:12px"><input type="radio" name="expMode" value="0" checked> 永久有效</label><label style="display:inline-flex;gap:6px"><input type="radio" name="expMode" value="custom"> 自定义天数</label><input class="input" id="expiryDays" type="number" min="1" placeholder="天数" style="margin-left:10px;width:120px" oninput="document.querySelector('input[name=expMode][value=custom]').checked=true"></div></div><div class="actions"><button type="button" class="btn" onclick="closeExpiryModal()">取消</button><button class="btn primary" onclick="setKeyExpiry()">保存</button></div></div></div>
-</body></html>
+</script>
+<script>
+(function(){
+  var q=document.getElementById('q');
+  if(!q) return;
+  q.addEventListener('input',function(){
+    try{
+      var v=q.value.trim().toLowerCase();
+      var rows=document.querySelectorAll('#accountRows tr');
+      for(var i=0;i<rows.length;i++){
+        var tr=rows[i];
+        if(!v){tr.style.display='';continue;}
+        tr.style.display = tr.textContent.toLowerCase().indexOf(v)>=0 ? '' : 'none';
+      }
+    }catch(e){}
+  });
+})();
+</script>
+</body>
+</html>
