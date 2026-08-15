@@ -1,233 +1,119 @@
-# m365-native
+# Copilot Bridge
 
-M365 ChatHub gateway for **authorized Microsoft 365 Copilot sessions**. It exposes OpenAI-compatible and Anthropic-compatible HTTP APIs for chat, streaming, multimodal input, tool calls, session continuity, and upstream image-event parsing.
+把你的 Microsoft 365 Copilot 账号，变成一套**标准的 OpenAI / Anthropic 兼容 API**：聊天、流式输出、多模态、工具调用、会话记忆全支持。多账号统一网关，自带 Web 管理后台。
 
-> This project is an interoperability gateway, not an authentication bypass. You must use a Microsoft account and tenant you are authorized to use. Upstream model availability, quotas, tools, vision, and image generation depend on the account and Microsoft service.
+> 本工具只是"互通网关"，不是绕过验证的工具。你只能使用自己有权限的 Microsoft 账号与租户。
 
-## 近期更新（2026-07-26 · 本 fork 增量）
+## 一句话能力清单
 
-> 以下为 `shenping1200/m365-native` 相对上游的本地增量改动，便于在主页快速查看。
+- 对外暴露 `/v1/chat/completions`、`/v1/responses`、`/v1/messages`（Anthropic）等标准接口
+- 多账号轮询 + 故障转移，规避微软 per-account 限流
+- **每个账号走独立代理 IP**
+- 可创建**带有效期**的 API Key
+- 实时统计每个账号的 **Token 用量（估算）**
 
-### 2026-07-19
-- **多账号轮询**：`resolveAccount()` 改为 round-robin。请求未指定账号且无会话绑定时，依次轮流使用全部已登录账号，把请求量分散到多个账号，规避微软 ChatHub 的 per-account 限流。同一段对话（同一 `session_key`）内账号锁定为首次选中的账号，保证上下文连贯。
-- **删除账号**：账号池页面每一行新增「删除」按钮，调用 `POST /api/accounts/delete`（body `{"id":"..."}`）按 id 删除账号，操作不可撤销。
-- **每账号请求次数统计**：`Server` 新增 `accountStats map[string]int64`，`resolveAccount()` 在「指定账号」与「轮询」两条分支均计数；`/api/accounts` 每个账号返回 `requestCount`；前端账号池表格新增「请求次数」列（蓝色数字）。计数在内存中，服务/容器重启后归零。
-- **上下文连贯性说明**：轮询不会导致 AI 回答断片。同一段对话内账号被锁定；且 OpenAI 兼容客户端（`/v1/chat/completions`）每轮都会把完整 `messages` 历史拼进 prompt 发送，即使账号轮换模型也能看到全部历史。
+下面重点讲你最关心的三个功能。
 
-相关提交：`f9df1f7`（删除账号 + 轮询）、`523c482`（请求次数初版）、`db75611`（请求次数计数修复）。
+---
 
-### 2026-07-26
-- **并发安全修复（P0 #3）**：`/api/accounts` 读取每账号请求计数 `accountStats` 改为在 `Server` 锁内读取（新增 `accountRequestCount` 方法），消除与 `resolveAccount` 写计数之间的并发 map 读写，避免进程触发 `fatal error: concurrent map read and map write` 后崩溃。
-- **删除账号清理会话绑定（P0 #4）**：`deleteAccount` 在删除令牌的同时调用 `sessions.deleteByAccount(id)`，一并清除该账号绑定的所有 `session_key` 映射。修复「删除账号后带该 `session_key` 的会话永久返回 400」以及「删账号后废掉多账号轮询故障转移」两个问题。
-- **API Key 有效期**：创建密钥时支持「永久有效」或「自定义天数」（创建框新增单选项，`POST /api/admin/keys` 传 `days`，`days≤0` 为永久）；密钥列表新增「有效期」列（显示「永久有效」/ 过期时间 /「已过期」），并提供「改有效期」按钮（调用 `PATCH /api/admin/keys`，body `{"id":"...","days":N}`，`days≤0` 表示改回永久）。过期的密钥在调用任何 `/v1/*` 接口时返回 `401`。
-- **说明**：以上改动全部只在本 fork 维护，不向上游合并；上游设置不理想，所有更新/拉取均走本 fork。
+## 一、IP 代理功能（重点）
 
-相关提交：本 fork 最新提交（2026-07-26 增量：并发安全 + 删账号清会话 + API Key 有效期）。
+**为什么需要**：微软对单个账号有请求频率限制，还会关联同一出口 IP 下的多个账号。给每个账号配独立代理 IP，能分散请求、降低被风控的概率。
 
-### 2026-08-04
-- **每账号独立代理**：账号池页面每个账号可单独配置代理。支持 `http(s)://host:port`、`socks5://user:pass@host:port`（标准）、`socks5://host:port:user:pass`（非标准，部分服务商常用）、`socks4://`、以及无 scheme 纯 `host:port`（默认按 SOCKS5）。ChatHub WebSocket 与该账号的 token 刷新均走对应代理，实现每账号独立出口 IP，进一步降低多账号被关联/触发风控的概率；未配置则直连。
-- **代理连通性测试**：账号行新增「测试」按钮，保存前即可调用 `POST /api/admin/test-proxy` 验证代理是否可用，并返回出口 IP 与延迟；格式错误在保存时即提示。
-- **安全加固**：新增 `.dockerignore`，避免 `secrets/`（管理员密码）、`data/`、`.env` 被打包进镜像层。
+**作用范围**：填了代理的账号，其 ChatHub WebSocket 连接和令牌刷新都走该代理。**不填 = 直连**。
 
-### 2026-08-04（续：代理证书修复 + 汇总 + 批量检测 + 缓存）
-- **HTTPS 代理证书跳过（仅代理段）**：修复 `https://` 形式代理在 M365 报 `unexpected EOF` 的问题。根因＝该代理只接受 TLS 接入且自身证书已过期（2021），Go 默认对「连到代理」这段也做证书校验故失败。改为自建 `CONNECT` 隧道，仅对「连到代理」这一段 `InsecureSkipVerify`，目标站（Microsoft / ipify）仍走正常 TLS 校验。指纹浏览器能用的 HTTPS 代理现在也能用。
-- **请求次数汇总**：账号池最顶部新增「请求次数汇总」卡片，数值为所有账号 `accountStats` 求和；`/api/accounts` 返回 `totalRequestCount`。
-- **一键批量检测代理**：账号列表「代理」表头右侧新增「🔍 一键检测」按钮，调用 `POST /api/admin/test-all-proxies` 并发探测所有配置了代理的账号，返回每个账号的 `ok / ip / status / latencyMs`。前端在每行内联显示结果（成功＝绿勾 + 出口 IP + 延迟；失败＝红叉 + 错误原因），顶部横幅汇总「成功 N / 失败 M」，方便快速定位失效代理。
-- **前端根页面缓存修复**：`rootPage` 增加 `Cache-Control: no-cache`，强制浏览器每次校验最新 `index.html`，避免「改了前端但用户端仍显示旧页面」的误判。
+### 代理地址填写规则
 
-相关提交：`32163cc`（HTTPS 代理证书跳过 + 请求次数汇总 + 一键批量检测代理）、`441474c`（根页面 no-cache）。
+系统会自动识别以下格式：
 
-## Reference repositories
+| 格式 | 说明 |
+|---|---|
+| `host:port` | 只写 `IP:端口`、不带协议头 → 默认按 **SOCKS5** |
+| `socks5://host:port` | 标准 SOCKS5 |
+| `socks5://user:pass@host:port` | SOCKS5 带账号密码（标准写法） |
+| `socks5://host:port:user:pass` | SOCKS5 带账号密码（**非标准**，部分服务商常用） |
+| `socks5h://host:port` | SOCKS5，由远程代理解析 DNS |
+| `socks4://host:port` | SOCKS4 |
+| `socks4://user:pass@host:port` | SOCKS4 带账号密码 |
+| `http://host:port` | HTTP 代理（明文 CONNECT） |
+| `http://user:pass@host:port` | HTTP 代理带账号密码 |
+| `http://host:port:user:pass` | HTTP 代理带账号密码（**非标准**，部分服务商常用） |
+| `https://host:port` | 真正用 TLS 包裹的代理（如 `12.180.8.60:443`） |
 
-- **M365-Copilot2API:** <https://github.com/HEXUXIU/M365-Copilot2API>
-- **Microsoft 365 Copilot:** <https://www.microsoft.com/microsoft-365/copilot>
+**两个易错点**：
 
-## Features
+- 很多代理服务商宣传"HTTPS 代理"，实际只是个 HTTP CONNECT 端点 → 请填 `http://`，填 `https://` 反而可能连不上。
+- 密码里含 `@`、`:` 等特殊字符时，优先用"非标准四段式" `host:port:user:pass`，避免解析错乱。
 
-- OpenAI-compatible `/v1/chat/completions`
-- OpenAI Responses-compatible `/v1/responses`
-- Anthropic-compatible `/v1/messages`
-- Streaming responses and multimodal input
-- Gateway-level tool/function calling with protocol conversion
-- Persistent conversation mapping through `session_key`
-- Model catalog with GPT-5.5, GPT-5.5 reasoning, GPT-5.6 reasoning, and Claude Sonnet routes when available upstream
-- Upstream image-event/GraphicArt parsing when enabled for the account
-- Web console for account, API-key, settings, conversations, and debug management
+**怎么验证**：账号行点「测试」可先验证代理是否可用（返回出口 IP 和延迟）；表格上方「🔍 一键检测」可批量探测所有已配代理的账号。
 
-## Requirements
+> 说明：HTTPS 代理只会对"连到代理这一段"跳过证书校验（支持过期/自签证书，和指纹浏览器行为一致），目标站（Microsoft）的 TLS 仍正常校验。
 
-- Go 1.22+ for source builds, or Docker/Compose
-- An authorized Microsoft account and tenant
-- OAuth access obtained through the bundled PKCE flow or an existing account cache
+---
 
-## Quick start: source build
+## 二、API Key 定时有效期
 
-```bash
-git clone https://github.com/shenping1200/m365-native.git
-cd m365-native
-cp .env.example .env
-# Edit .env. Never commit real passwords or tokens.
-set -a; . ./.env; set +a
-go test ./...
-go vet ./...
-go run ./cmd/server
-```
+创建 Key 时可选择：
 
-The default bind address is `127.0.0.1:4141`. Open <http://127.0.0.1:4141/> and complete administrator setup/login. Keep the service on localhost unless you add TLS and an access-control layer.
+- **永久有效**：`days` 传 0 或留空
+- **自定义天数**：填 N 天，到期时间 = 创建时刻 + N 天
 
-Build a standalone binary:
+到期后的 Key 在调用任何 `/v1/*` 接口时会返回 `401`，但在后台列表里仍然可见（标注"已过期"）。
 
-```bash
-go build -trimpath -o m365-native ./cmd/server
-./m365-native
-```
+后台支持随时改有效期：点「改有效期」→ 填天数 → 保存。`days=0` 即改回永久有效。
 
-## Docker deployment (recommended)
+> 典型用途：临时给同事/客户开 Key，到期自动失效，不用手动回收。
 
-Docker is the recommended deployment method for a reproducible runtime. The image runs as a non-root user and stores mutable credentials/state under `/data`.
+---
 
-### 1. Prepare directories and admin secret
+## 三、Token 统计与估算说明
 
-```bash
-mkdir -p data secrets
-printf '%s\n' 'replace-with-a-long-random-admin-password' > secrets/m365_admin_password
-chmod 600 secrets/m365_admin_password
-```
+**为什么是"估算"**：微软 ChatHub 的返回结果里**没有 token 用量字段**，不像 OpenAI 那样直接给你 `usage`。所以这里的 Token 数字是我们自己算出来的，是"估算值"，不是官方计数。
 
-Do not commit `data/` or `secrets/`. The provided `.gitignore` excludes them.
+**怎么算的**（已尽量贴近真实）：
 
-### 2. Build and start
+- 对 `gpt-` 开头的模型，用真正的 **o200k_base** 分词器（词表内嵌、不联网）逐字分词。
+- 对 M365 Copilot 等其它模型，用字符启发式：
+  - 跳过空格/换行；
+  - 英文等 ASCII：约 **4 个字符 = 1 token**（公式 `(长度+3)/4`）；
+  - 中文等其它字符：**1 个字符 = 1 token**。
+- 还把整段请求结构也算进去：每条消息的 role / content / name / 工具调用，加上工具 schema，再加上协议固定开销（每条消息 4 token、每工具 6 token、回复前缀 3 token 等），最后加上模型回复文本。
+
+这套口径参考了社区通用实现，比单纯"总字数 ÷ 4"准很多，但**仍属估算**，适合看趋势、做配额判断，不要当成精确账单。
+
+**统计口径**：
+
+- 每个账号独立累计「发送 Token / 接收 Token」；
+- 顶部汇总「总请求数 / 总发送 / 总接收」；
+- 数字过大时自动用 `k` / `M` 单位显示。
+
+---
+
+## 快速开始
 
 ```bash
-docker compose build
-docker compose up -d
-
-docker compose ps
-docker compose logs -f m365-native
+git clone https://github.com/shenping1200/m365-copilot-bridge.git
+cd m365-copilot-bridge
+docker compose build && docker compose up -d
 ```
 
-The default Compose mapping is local-only:
+打开 `http://127.0.0.1:4141/` → 登录 → 完成 Microsoft 授权 → 在后台创建 API Key。
 
-```text
-127.0.0.1:4141 -> container:4141
-```
-
-For a reverse proxy or LAN deployment, change the `ports` mapping deliberately and put TLS/authentication in front of it.
-
-### 3. Persistent data
-
-The Compose file mounts:
-
-```text
-./data/accounts.json       OAuth account cache
-./data/token-cache.json    token cache
-./data/sessions.json       session_key mapping
-./data/api-keys.json       API-key hashes
-./secrets/m365_admin_password administrator password secret
-```
-
-Back up these files securely. `accounts.json` and token caches are credentials. Never paste them into issues, logs, screenshots, or public repositories.
-
-### 4. First login and API key
-
-Open:
-
-```text
-http://127.0.0.1:4141/
-```
-
-Log in to the web console, complete the Microsoft authorization flow, and create an API key from the administration interface. Use that key with `/v1`:
-
-```bash
-curl http://127.0.0.1:4141/v1/models \
-  -H 'Authorization: Bearer YOUR_M365_NATIVE_API_KEY'
-```
-
-The gateway accepts either `Authorization: Bearer ...` or `X-API-Key: ...`.
-
-## API examples
-
-OpenAI Chat Completions:
+调用示例：
 
 ```bash
 curl http://127.0.0.1:4141/v1/chat/completions \
-  -H 'Authorization: Bearer YOUR_M365_NATIVE_API_KEY' \
+  -H 'Authorization: Bearer 你的KEY' \
   -H 'Content-Type: application/json' \
-  -d '{
-    "model": "gpt-5.6-reasoning",
-    "messages": [{"role": "user", "content": "Hello"}],
-    "stream": true,
-    "session_key": "my-conversation-1"
-  }'
+  -d '{"model":"gpt-5.6-reasoning","messages":[{"role":"user","content":"你好"}],"stream":true}'
 ```
 
-Keep `session_key` stable for every turn of the same conversation. Use a different key for a different conversation. The gateway stores the corresponding upstream `ConversationID` and `SessionID` in the session cache.
+## 安全提示
 
-Anthropic-compatible endpoint:
-
-```bash
-curl http://127.0.0.1:4141/v1/messages \
-  -H 'x-api-key: YOUR_M365_NATIVE_API_KEY' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "model": "claude-sonnet",
-    "max_tokens": 1024,
-    "messages": [{"role": "user", "content": "Hello"}]
-  }'
-```
-
-## Model routing
-
-The public model IDs are gateway aliases. The current stable catalog is:
-
-| Public model | Upstream tone |
-|---|---|
-| `gpt-5.5` | `Gpt_5_5_Chat` |
-| `gpt-5.5-reasoning` | `Gpt_5_5_Reasoning` |
-| `gpt-5.6-reasoning` | `Gpt_5_6_Reasoning` |
-| `claude-sonnet` | `Claude_Sonnet` |
-| `claude-sonnet-reasoning` | `Claude_Sonnet_Reasoning` |
-
-Availability and latency remain controlled by Microsoft 365 ChatHub and the account entitlement.
-
-## Configuration
-
-Common environment variables:
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `M365_LISTEN` | `127.0.0.1:4141` | HTTP bind address |
-| `M365_CONFIG` | `~/.config/m365-native/accounts.json` | OAuth account cache |
-| `M365_ADMIN_PASSWORD` | bootstrap default only | Admin password; prefer a secret file |
-| `M365_ADMIN_PASSWORD_FILE` | unset | File containing admin password |
-| `M365_TOKEN_CACHE` | platform default | Token cache path |
-| `M365_SESSION_CACHE` | temp directory | Persistent `session_key` mapping |
-| `M365_API_KEYS` | `~/.config/m365-native/api-keys.json` | API-key hash store |
-| `M365_CHAT_TIMEOUT_SECONDS` | `120` | Chat timeout |
-| `M365_IMAGE_TIMEOUT_SECONDS` | `150` | Image request timeout |
-| `M365_MAX_TOOL_ROUNDS` | `16` | Maximum tool rounds |
-| `M365_MAX_TOOL_CALLS_PER_TURN` | `1` | Tool-call limit per turn |
-| `M365_CONTEXT_WINDOW` | `128000` | Advertised context window |
-| `M365_MAX_OUTPUT_TOKENS` | `16384` | Advertised output limit |
-
-## Development and verification
-
-```bash
-gofmt -w cmd internal
-go test ./...
-go vet ./...
-go build ./...
-```
-
-## Security notes
-
-- Bind to localhost by default.
-- Change the administrator password immediately.
-- Keep OAuth caches, token files, API-key files, and Docker secrets private.
-- Use TLS and an additional access-control layer before exposing the service outside localhost.
-- Do not log or publish access tokens, cookies, authorization headers, or raw authenticated WebSocket URLs.
-- This gateway only supports accounts and services you are authorized to access.
+- 默认只监听本地 `127.0.0.1:4141`，对外暴露前务必加 TLS 和访问控制。
+- 妥善保管 `secrets/`（管理员密码）与 `data/`（账号、token 缓存），不要提交或外泄。
+- 仅使用你有权限的账号。
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT。
