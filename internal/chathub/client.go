@@ -2,6 +2,7 @@ package chathub
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -83,9 +84,17 @@ func NewClient() *Client {
 		HTTPHeader: h,
 		Dialer: &websocket.Dialer{
 			HandshakeTimeout: 20 * time.Second,
-			// substrate frames can be large
-			ReadBufferSize:  1024 * 1024,
-			WriteBufferSize: 64 * 1024,
+			// substrate frames can be large, but 256KB is ample and keeps
+			// memory bounded per connection
+			ReadBufferSize:  256 * 1024,
+			WriteBufferSize: 16 * 1024,
+			// Share TLS sessions across dials so subsequent connections to
+			// the same host skip the full handshake. This only caches the
+			// TLS session ticket, never the live connection itself, so it
+			// is safe with ChatHub's single-use connection constraint.
+			TLSClientConfig: &tls.Config{
+				ClientSessionCache: tls.NewLRUClientSessionCache(32),
+			},
 		},
 	}
 }
