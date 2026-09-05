@@ -385,7 +385,7 @@ tbody tr:hover{background:#fafbff}
         <div><label style="display:inline-flex;gap:6px;margin-right:12px"><input type="radio" name="keyExpire" value="0" checked> 永久有效</label><label style="display:inline-flex;gap:6px"><input type="radio" name="keyExpire" value="custom"> 自定义天数</label><input class="input" id="newKeyDays" type="number" min="1" placeholder="天数" style="margin-left:10px;width:120px"></div>
       </div>
       <div class="form-row" id="keyCreated" style="display:none"><label>已生成密钥（请复制保存）</label><div class="key-output" id="newKeyValue"></div><button type="button" class="copy-btn" onclick="copyCreatedKey()">复制</button></div>
-      <div class="actions"><button type="button" class="btn" onclick="closeKeyModal()">关闭</button></div>
+      <div class="actions"><button type="submit" class="btn primary">创建</button><button type="button" class="btn" onclick="closeKeyModal()">关闭</button></div>
     </form>
   </div>
 </div>
