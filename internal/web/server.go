@@ -85,6 +85,7 @@ func (s *Server) Routes() http.Handler {
 	m.HandleFunc("/api/admin/session", s.adminSession)
 	m.HandleFunc("/api/admin/change-password", s.adminChangePassword)
 	m.HandleFunc("/api/admin/keys", s.adminKeys)
+	m.HandleFunc("/api/admin/keys/reveal", s.adminKeyReveal)
 	m.HandleFunc("/api/admin/settings", s.adminSettings)
 	m.HandleFunc("/api/admin/debug/logs", s.debugList)
 	m.HandleFunc("/api/admin/debug/detail", s.debugDetail)
@@ -260,6 +261,26 @@ func (s *Server) adminKeys(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "method not allowed", 405)
 	}
+}
+// adminKeyReveal returns the cleartext API key for a given id.
+// 后端 apiKeyStore.create() 现已把完整 key 落盘(明文)。list 仍只返前缀,但这个端点把明文返给管理员。
+// 历史 key(本改动前创建) Key 字段空,返 notFound — 前端据此提示新建。
+func (s *Server) adminKeyReveal(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		http.Error(w, "missing id", 400)
+		return
+	}
+	k, ok := s.apiKeys.reveal(id)
+	if !ok {
+		http.Error(w, "key not found", 404)
+		return
+	}
+	jsonOut(w, map[string]string{"key": k})
 }
 func (s *Server) validAPIKey(r *http.Request) bool {
 	raw := strings.TrimSpace(r.Header.Get("X-API-Key"))

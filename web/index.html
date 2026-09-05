@@ -404,6 +404,18 @@ tbody tr:hover{background:#fafbff}
   </div>
 </div>
 
+
+<div id="revealModal" class="modal" onclick="if(event.target===this)closeRevealModal()">
+  <div class="modal-card">
+    <h3>完整 API Key</h3>
+    <div class="form-row"><label>Key ID</label><div class="muted" id="revealKeyId" style="font-family:monospace"></div></div>
+    <div class="form-row"><label>完整 Key</label><div><code style="user-select:all;display:block;padding:8px;background:var(--bg);border-radius:6px;word-break:break-all;font-size:12px" id="revealKeyValue"></code></div></div>
+    <div class="muted" id="revealKeyCopied" style="margin-top:6px"></div>
+    <div class="muted" style="margin-top:6px;font-size:12px">⚠️ 此 Key 完整内容会保存到服务端 <code>api-keys.json</code>(明文)。妥善保护 data 卷与备份。</div>
+    <div class="actions"><button type="button" class="btn" onclick="closeRevealModal()">关闭</button><button class="btn primary" onclick="revealKey($('revealKeyId').textContent)">再次复制</button></div>
+  </div>
+</div>
+
 <div id="notice" class="notice"></div>
 
 <script>
@@ -414,8 +426,25 @@ async function loadKeys(){try{const d=await api('/api/admin/keys');const activeK
 $('keyRows').innerHTML=activeKeys.map(k=>{
   let expLabel='永久有效', expMuted=false, statusLabel=k.revoked?'已撤销':'有效';
   if(k.expiresAt){const t=new Date(k.expiresAt).getTime(); if(t<Date.now()){expLabel='已过期';expMuted=true;statusLabel='已过期';}else{expLabel=new Date(k.expiresAt).toLocaleString();}}
-  return `<tr data-key-id="${esc(k.id)}"><td><b>${esc(k.name)}</b></td><td><code class="copyable" data-copy-text="${esc(k.prefix)}…" title="点击复制 prefix" style="cursor:pointer">${esc(k.prefix)}…</code> <button class="btn" data-key-act="copy" data-text="${esc(k.prefix)}" title="复制 prefix" style="padding:1px 6px;font-size:11px">📋</button></td><td class="muted">${new Date(k.createdAt).toLocaleString()}</td><td class="muted">${k.lastUsedAt?new Date(k.lastUsedAt).toLocaleString():'未使用'}</td><td${expMuted?' class="muted"':''}>${expLabel}</td><td>${statusLabel}</td><td>${k.revoked?'':'<button class="btn" data-key-act="expiry" data-id="' + esc(k.id) + '">改有效期</button> <button class="btn danger" data-key-act="revoke" data-id="' + esc(k.id) + '">撤销</button>'}</td></tr>`
-}).join('')||'<tr><td colspan="7" class="empty">暂无 API Key</td></tr>'}catch(e){note(e.message)}const __kr=$('keyRows');if(__kr&&!__kr.dataset.bound){__kr.dataset.bound='1';__kr.addEventListener('click',e=>{const __b=e.target.closest('[data-key-act]');if(!__b)return;const __act=__b.dataset.keyAct;if(__act==='copy'){copyText(__b.dataset.text||'','Prefix 已复制')}else if(__act==='revoke'){const __id=__b.dataset.id;if(__id)revokeKey(__id)}else if(__act==='expiry'){const __id=__b.dataset.id;if(__id)openExpiryModal(__id)}})}}function openKeyModal(){$('keyModal').classList.add('open');$('keyCreated').style.display='none';$('newKeyName').value='default';setTimeout(()=>$('newKeyName').focus(),50)}function closeKeyModal(){$('keyModal').classList.remove('open')}async function copyText(text,msg='已复制到剪贴板'){try{await navigator.clipboard.writeText(text);note(msg);return true}catch(e){const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();const ok=document.execCommand('copy');ta.remove();if(ok)note(msg);return ok}}function copyBaseUrl(){return copyText(location.origin+'/v1/chat/completions','Base URL 已复制')}async function createKey(e){e.preventDefault();const name=$('newKeyName').value.trim()||'default';const em=document.querySelector('input[name=keyExpire]:checked');let days=0;if(em&&em.value==='custom'){days=parseInt($('newKeyDays').value,10)||0}try{const d=await api('/api/admin/keys',{method:'POST',body:JSON.stringify({name,days})});$('newKeyValue').textContent=d.key;$('keyCreated').style.display='block';await copyText(d.key);loadKeys()}catch(e){note(e.message)}}async function copyCreatedKey(){await copyText($('newKeyValue').textContent)}async function revokeKey(id){if(!confirm('撤销这个 API Key？'))return;try{await api('/api/admin/keys?id='+encodeURIComponent(id),{method:'DELETE'});note('API Key 已撤销')}catch(e){note(e.message)}finally{loadKeys()}}
+  return `<tr data-key-id="${esc(k.id)}"><td><b>${esc(k.name)}</b></td><td><code class="copyable" data-copy-text="${esc(k.prefix)}…" title="仅前缀,点 📋 复制完整 Key" style="cursor:pointer">${esc(k.prefix)}…</code> <button class="btn" data-key-act="reveal" data-id="${esc(k.id)}" title="查看并复制完整 Key" style="padding:1px 6px;font-size:11px">📋</button></td><td class="muted">${new Date(k.createdAt).toLocaleString()}</td><td class="muted">${k.lastUsedAt?new Date(k.lastUsedAt).toLocaleString():'未使用'}</td><td${expMuted?' class="muted"':''}>${expLabel}</td><td>${statusLabel}</td><td>${k.revoked?'':'<button class="btn" data-key-act="expiry" data-id="' + esc(k.id) + '">改有效期</button> <button class="btn danger" data-key-act="revoke" data-id="' + esc(k.id) + '">撤销</button>'}</td></tr>`
+}).join('')||'<tr><td colspan="7" class="empty">暂无 API Key</td></tr>'}catch(e){note(e.message)}const __kr=$('keyRows');if(__kr&&!__kr.dataset.bound){__kr.dataset.bound='1';__kr.addEventListener('click',e=>{const __b=e.target.closest('[data-key-act]');if(!__b)return;const __act=__b.dataset.keyAct;if(__act==='copy'){copyText(__b.dataset.text||'','Prefix 已复制')}else if(__act==='reveal'){const __id=__b.dataset.id;if(__id)revealKey(__id)}else if(__act==='revoke'){const __id=__b.dataset.id;if(__id)revokeKey(__id)}else if(__act==='expiry'){const __id=__b.dataset.id;if(__id)openExpiryModal(__id)}})}}function openKeyModal(){$('keyModal').classList.add('open');$('keyCreated').style.display='none';$('newKeyName').value='default';setTimeout(()=>$('newKeyName').focus(),50)}function closeKeyModal(){$('keyModal').classList.remove('open')}async function copyText(text,msg='已复制到剪贴板'){try{await navigator.clipboard.writeText(text);note(msg);return true}catch(e){const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();const ok=document.execCommand('copy');ta.remove();if(ok)note(msg);return ok}}function copyBaseUrl(){return copyText(location.origin+'/v1/chat/completions','Base URL 已复制')}async function createKey(e){e.preventDefault();const name=$('newKeyName').value.trim()||'default';const em=document.querySelector('input[name=keyExpire]:checked');let days=0;if(em&&em.value==='custom'){days=parseInt($('newKeyDays').value,10)||0}try{const d=await api('/api/admin/keys',{method:'POST',body:JSON.stringify({name,days})});$('newKeyValue').textContent=d.key;$('keyCreated').style.display='block';await copyText(d.key);loadKeys()}catch(e){note(e.message)}}async function copyCreatedKey(){await copyText($('newKeyValue').textContent)}async function revokeKey(id){if(!confirm('撤销这个 API Key？'))return;try{await api('/api/admin/keys?id='+encodeURIComponent(id),{method:'DELETE'});note('API Key 已撤销')}catch(e){note(e.message)}finally{loadKeys()}}
+
+// revealKey 通过 GET /api/admin/keys/reveal?id=... 取完整 key,自动复制到剪贴板,并弹 modal 让管理员看清一眼。
+// 历史 key(后端 Key 字段空)会 404,前端 note 提示用户重新创建一条。
+async function revealKey(id){
+	try{
+		const d=await api('/api/admin/keys/reveal?id='+encodeURIComponent(id));
+		if(!d||!d.key){note('未取到 Key,请重试');return}
+		const ok=await copyText(d.key)
+		const m=$('revealModal');if(m){$('revealKeyValue').textContent=d.key;$('revealKeyId').textContent=id;$('revealKeyCopied').textContent=ok?'已自动复制到剪贴板':'复制失败,请手动选取';m.classList.add('open')}
+	}catch(e){
+		const msg=(e&&e.message)||String(e)
+		if(/key not found|404/.test(msg))note('该 Key 的完整内容已丢失(创建于 reveal 改动之前),请新建一条')
+		else if(/503|not configured|auth_error|401|403/.test(msg))note('需要先登录管理员账号')
+		else note('取完整 Key 失败:'+msg)
+	}
+}
+function closeRevealModal(){$('revealModal').classList.remove('open')}
 function showPage(p){sessionStorage.setItem('m365.currentPage',p);if(p==='keys')loadKeys();if(p==='logs')loadLogs();if(p==='settings')loadSettings();['pool','add','keys','logs','settings'].forEach(x=>{ $('page-'+x).style.display=x===p?'block':'none';document.querySelector(`[data-page="${x}"]`).classList.toggle('active',x===p)});$('topTitle').textContent=titles[p]}
 async function refreshAccount(id,button){if(!confirm('立即刷新这个账号的令牌？'))return;const old=button.textContent;button.disabled=true;button.textContent='刷新中…';try{const d=await api('/api/accounts/refresh',{method:'POST',body:JSON.stringify({id})});note('令牌刷新成功，有效期至 '+new Date(d.account.expiresAt).toLocaleString());await loadAccounts()}catch(e){note('令牌刷新失败：'+e.message)}finally{button.disabled=false;button.textContent=old}}async function deleteAccount(id,button){if(!confirm('确定删除这个账号？此操作不可撤销。'))return;const old=button.textContent;button.disabled=true;button.textContent='删除中…';try{await api('/api/accounts/delete',{method:'POST',body:JSON.stringify({id})});note('账号已删除');await loadAccounts()}catch(e){note('删除失败：'+e.message)}finally{button.disabled=false;button.textContent=old}}
 

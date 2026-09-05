@@ -17,6 +17,7 @@ type apiKeyRecord struct {
 	Name       string     `json:"name"`
 	Prefix     string     `json:"prefix"`
 	Hash       string     `json:"hash"`
+	Key        string     `json:"key,omitempty"` // 明文 key 仅创建时写入;list 接口会清空,仅 reveal 接口返回。⚠️ 明文落盘,data 卷请妥善保护。
 	CreatedAt  time.Time  `json:"createdAt"`
 	LastUsedAt *time.Time `json:"lastUsedAt,omitempty"`
 	ExpiresAt  *time.Time `json:"expiresAt,omitempty"`
@@ -53,7 +54,7 @@ func (s *apiKeyStore) create(name string, days int) (apiKeyRecord, string, error
 		return apiKeyRecord{}, "", e
 	}
 	raw := "m365_" + hex.EncodeToString(b)
-	r := apiKeyRecord{ID: hex.EncodeToString(b[:8]), Name: name, Prefix: raw[:12], Hash: keyHash(raw), CreatedAt: time.Now()}
+	r := apiKeyRecord{ID: hex.EncodeToString(b[:8]), Name: name, Prefix: raw[:12], Hash: keyHash(raw), Key: raw, CreatedAt: time.Now()}
 	if days > 0 {
 		exp := time.Now().AddDate(0, 0, days)
 		r.ExpiresAt = &exp
@@ -71,6 +72,7 @@ func (s *apiKeyStore) list() []apiKeyRecord {
 	copy(out, s.Keys)
 	for i := range out {
 		out[i].Hash = ""
+		out[i].Key = "" // list 接口绝不返回明文 key;只有 reveal 接口返回。
 	}
 	return out
 }
@@ -123,4 +125,20 @@ func (s *apiKeyStore) setExpiry(id string, days int) bool {
 		}
 	}
 	return false
+}
+
+// reveal 返回明文 key。要求调用者已经走 admin session 中间件。
+// 历史 key(创建于本改动之前)字段 Key 为空,会返回 notFound 以提示前端用户需新建。
+func (s *apiKeyStore) reveal(id string) (string, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := range s.Keys {
+		if s.Keys[i].ID == id {
+			if s.Keys[i].Key == "" {
+				return "", false // 历史 key,无明文记录
+			}
+			return s.Keys[i].Key, true
+		}
+	}
+	return "", false
 }
