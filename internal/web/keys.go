@@ -78,9 +78,12 @@ func (s *apiKeyStore) revoke(id string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for i := range s.Keys {
-		if s.Keys[i].ID == id && !s.Keys[i].Revoked {
-			s.Keys[i].Revoked = true
-			s.save()
+		if s.Keys[i].ID == id {
+			// 幂等：已撤销的 key 再次撤销仍视为成功，避免前端重复点击时返回 404
+			if !s.Keys[i].Revoked {
+				s.Keys[i].Revoked = true
+				s.save()
+			}
 			return true
 		}
 	}
