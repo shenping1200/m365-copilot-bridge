@@ -1093,6 +1093,33 @@ func sseRaw(ctx context.Context, w http.ResponseWriter, f http.Flusher, payload 
 	return nil
 }
 
+// sseFinishChunk emits the terminal OpenAI streaming chunk. Clients (including the
+// Vercel AI SDK used by most desktop chat apps) treat a stream that reaches [DONE]
+// without ever seeing a non-null finish_reason as a truncated response and raise
+// "Response stream ended without a finish reason".
+func sseFinishChunk(ctx context.Context, w http.ResponseWriter, f http.Flusher, id, model, reason string) error {
+	chunk := map[string]any{
+		"id":      id,
+		"object":  "chat.completion.chunk",
+		"created": time.Now().Unix(),
+		"model":   model,
+		"choices": []map[string]any{{
+			"index":         0,
+			"delta":         map[string]any{},
+			"finish_reason": reason,
+		}},
+	}
+	return sseRaw(ctx, w, f, "data: "+mustJSON(chunk)+"\n\n")
+}
+
+// sseErrorChunk surfaces an upstream failure to the client instead of closing the
+// stream silently, which is indistinguishable from a clean but empty completion.
+func sseErrorChunk(ctx context.Context, w http.ResponseWriter, f http.Flusher, err error) error {
+	return sseRaw(ctx, w, f, "data: "+mustJSON(map[string]any{
+		"error": map[string]any{"message": err.Error(), "type": "upstream_error"},
+	})+"\n\n")
+}
+
 func (s *Server) openaiChat(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -1260,6 +1287,13 @@ func (s *Server) openaiChat(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 			}
+			finishReason := "stop"
+			if len(streamedTools) > 0 {
+				finishReason = "tool_calls"
+			}
+			if err := sseFinishChunk(r.Context(), w, flusher, id, model, finishReason); err != nil {
+				return
+			}
 			if err := sseRaw(r.Context(), w, flusher, "data: [DONE]\n\n"); err != nil {
 				return
 			}
@@ -1357,6 +1391,9 @@ APPLICATION_REQUEST_AND_EVIDENCE:
 		}
 		res, err = s.chat.ChatWithDelta(ctx, account, answerReq, emit)
 		if err == nil {
+			if err := sseFinishChunk(r.Context(), w, flusher, id, model, "stop"); err != nil {
+				return
+			}
 			if err := sseRaw(r.Context(), w, flusher, "data: [DONE]\n\n"); err != nil {
 				return
 			}
@@ -1367,6 +1404,10 @@ APPLICATION_REQUEST_AND_EVIDENCE:
 	if err != nil {
 		s.markAccountResult(acc.ID, err)
 		if streamed {
+			// Report the upstream failure instead of closing the stream silently.
+			if f, ok := w.(http.Flusher); ok {
+				_ = sseErrorChunk(r.Context(), w, f, err)
+			}
 			return
 		}
 		// non-streaming auto-selected chats fail over to the next healthy account once
@@ -1450,6 +1491,9 @@ APPLICATION_REQUEST_AND_EVIDENCE:
 		}
 		b, _ := json.Marshal(chunk)
 		if err := sseRaw(r.Context(), w, flusher, "data: "+string(b)+"\n\n"); err != nil {
+			return
+		}
+		if err := sseFinishChunk(r.Context(), w, flusher, id, model, "stop"); err != nil {
 			return
 		}
 		if err := sseRaw(r.Context(), w, flusher, "data: [DONE]\n\n"); err != nil {

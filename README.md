@@ -28,7 +28,7 @@
 | `POST /v1/responses` | 同上 | OpenAI Responses 兼容 |
 | `POST /v1/messages` | `x-api-key` | Anthropic 兼容 |
 
-- **流式输出**：`stream:true` 时按 SSE 逐块返回。
+- **流式输出**：`stream:true` 时按 SSE 逐块返回。**流末尾必定补发一帧带 `finish_reason`（`stop` / `tool_calls`）的终止块，再发 `data: [DONE]`**，符合 OpenAI 流式协议 —— 严格解析的客户端（Cherry Studio、Vercel AI SDK 系、各类 Agent 框架）不会再把正常结束误判为「响应被截断」。
 - **多模态**：图文混输随上游账号能力开放。
 - **工具调用**：网关层做协议转换，把 OpenAI / Anthropic 工具格式转成 ChatHub 工具调用。
 - **会话保持**：稳定传同一个 `session_key` 即可让同一段对话绑定到同一个上游会话（ConversationID / SessionID），刷新页面或换客户端都不丢上下文。
@@ -179,6 +179,47 @@ curl http://127.0.0.1:4141/v1/chat/completions \
 | `M365_MAX_OUTPUT_TOKENS` | `16384` | 最大输出 token |
 
 （其余路径类见「设置」页与 `.env.example`）
+
+---
+
+## 更新记录
+
+### 2026-09-18 · 修复流式响应缺失终止帧（重要）
+
+**问题**：`POST /v1/chat/completions` 在 `stream:true` 时，内容块发完后**直接发送 `data: [DONE]`，从未发送带 `finish_reason` 的终止帧**。HTTP 状态码仍是 `200`、内容也完整，所以「curl 看状态码」这种验证方式发现不了。
+
+**影响**：严格按 OpenAI 流式协议解析的客户端会把这种响应判定为「响应流被截断」，抛出类似 `Response stream ended without a finish reason` 的错误，并把本轮回答标记为失败。宽松客户端（裸 curl、部分脚本）不受影响 —— 这也是该问题能长期潜伏的原因。
+
+**修复**：`internal/web/server.go` 三处流式分支在 `[DONE]` 之前补发终止帧：
+
+| 分支 | 终止帧 `finish_reason` |
+|---|---|
+| 事件流（`ChatWithEvents`） | `tool_calls`（有工具调用时）/ `stop` |
+| 增量流（`ChatWithDelta`，默认路径） | `stop` |
+| 一次性流 | `stop` |
+
+同时新增 `sseErrorChunk()`：上游在流中途失败时向客户端发送错误帧，而不再静默关闭连接（原先「静默关闭」与「正常结束但没给结束原因」在客户端看来完全一样，无法区分故障与正常）。
+
+非流式响应、工具调用路径、`/v1/responses`、`/v1/messages` 原本就正确，本次未改动。
+
+**回归验证方式（建议固化）**：不要只看 HTTP 200，要抓 SSE 原始帧并断言终止帧存在：
+
+```bash
+curl -sN http://127.0.0.1:4141/v1/chat/completions \
+  -H "X-API-Key: YOUR_KEY" -H 'Content-Type: application/json' \
+  -d '{"model":"gpt-5.5","messages":[{"role":"user","content":"你好"}],"stream":true}' \
+  | tail -3
+```
+
+期望末尾三帧形如：
+
+```
+data: {"choices":[{"delta":{"content":"你好"},"finish_reason":null,...}]}
+data: {"choices":[{"delta":{},"finish_reason":"stop",...}]}
+data: [DONE]
+```
+
+**回退锚点**：`rollback/pre-finish-reason-fix-20260918` · `m365-native:rollback-pre-finish-reason-fix-20260918`
 
 ---
 
