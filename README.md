@@ -234,6 +234,18 @@ data: [DONE]
 
 ---
 
+### 2026-09-22 · 修复每请求校验持锁写盘导致的性能瓶颈（P2）
+
+**问题**：API Key 校验函数 `valid()`（`internal/web/keys.go`）每次校验成功都调用 `save()` 做全量 JSON 序列化 + 写盘，而它被 `adminMiddleware` 对每个 `/v1/*` 请求调用，且整个序列化与写盘都在全局 `apiKeyStore.mu` 锁内完成。结果是网关的每一条聊天请求都要先过一次**持全局锁的磁盘写**，并发被这把锁串行化。实测单次校验耗时从纯内存比对的 ~487ns 劣化到 ~610µs（约 1250 倍），高并发下吞吐直接被锁死。
+
+**修复**：把 `LastUsedAt` 的更新改为**仅改内存 + 标脏（`dirty`）**，落盘交给后台周期任务 `saver()`（每 10s 一次，快照后解锁再写，原子 tmp+rename）。`create`/`revoke`/`setExpiry` 等低频管理操作仍即时落盘。`save()` 重构为 `writeFile()`（不在持锁期间做 I/O）+ `save()`（即时写盘并清脏标志），与已有的 `statsSaver` 模式一致。
+
+**影响**：聊天请求不再触碰磁盘、不再被 key 锁阻塞，响应延迟与并发吞吐回归正常；`LastUsedAt` 最多滞后 10s、进程异常退出会丢失最近一次更新（仅遥测字段，可接受）。
+
+**回退锚点**：`rollback/pre-keys-saver-20260922` · `m365-native:rollback-pre-keys-saver-20260922`
+
+---
+
 ## 安全提示
 
 - 默认只绑 localhost；对外暴露前务必加 **TLS 与访问控制层**。

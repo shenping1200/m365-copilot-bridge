@@ -27,6 +27,11 @@ type apiKeyStore struct {
 	mu   sync.Mutex
 	Path string
 	Keys []apiKeyRecord `json:"keys"`
+
+	// dirty marks the in-memory store as needing a disk flush. LastUsedAt
+	// updates only set this flag (see saver) so the hot validation path
+	// never blocks on disk I/O under the global lock.
+	dirty bool
 }
 
 func openAPIKeys() *apiKeyStore {
@@ -42,10 +47,44 @@ func openAPIKeys() *apiKeyStore {
 	}
 	return s
 }
-func (s *apiKeyStore) save() {
+// writeFile serializes the store to disk atomically. It must be called WITHOUT
+// holding s.mu so concurrent valid() calls are not blocked on I/O.
+func (s *apiKeyStore) writeFile() {
 	_ = os.MkdirAll(filepath.Dir(s.Path), 0700)
-	b, _ := json.MarshalIndent(s, "", "  ")
-	_ = os.WriteFile(s.Path, b, 0600)
+	b, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return
+	}
+	tmp := s.Path + ".tmp"
+	if err := os.WriteFile(tmp, b, 0600); err != nil {
+		return
+	}
+	_ = os.Rename(tmp, s.Path)
+}
+
+// save is used by low-frequency admin operations (create/revoke/setExpiry) that
+// already hold s.mu; it flushes immediately and clears the dirty flag.
+func (s *apiKeyStore) save() {
+	s.writeFile()
+	s.dirty = false
+}
+
+// saver periodically flushes the store to disk so a restart does not lose more
+// than a few seconds of LastUsedAt updates. Mirrors statsSaver.
+func (s *apiKeyStore) saver() {
+	t := time.NewTicker(10 * time.Second)
+	defer t.Stop()
+	for range t.C {
+		s.mu.Lock()
+		if !s.dirty {
+			s.mu.Unlock()
+			continue
+		}
+		snap := apiKeyStore{Path: s.Path, Keys: append([]apiKeyRecord(nil), s.Keys...)}
+		s.dirty = false
+		s.mu.Unlock()
+		snap.writeFile()
+	}
 }
 func keyHash(k string) string { h := sha256.Sum256([]byte(k)); return hex.EncodeToString(h[:]) }
 func (s *apiKeyStore) create(name string, days int) (apiKeyRecord, string, error) {
@@ -103,7 +142,7 @@ func (s *apiKeyStore) valid(raw string) bool {
 				continue
 			}
 			s.Keys[i].LastUsedAt = &now
-			s.save()
+			s.dirty = true // mark dirty; saver flushes periodically, no per-request disk write
 			return true
 		}
 	}

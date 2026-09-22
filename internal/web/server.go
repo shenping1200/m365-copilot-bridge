@@ -75,6 +75,7 @@ func New() (*Server, error) {
 	}
 	s.loadStats()
 	go s.statsSaver()
+	go s.apiKeys.saver() // P2: periodic flush, avoid per-request disk write under lock
 	return s, nil
 }
 
