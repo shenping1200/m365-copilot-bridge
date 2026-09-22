@@ -456,6 +456,20 @@ func (s *Server) loadStats() {
 	}
 }
 
+// copyInt64Map returns a shallow copy of an int64 map. Callers serialize the
+// copy after releasing the server mutex so json.Marshal's map iteration cannot
+// race with recordTokens/addTokens mutating the live maps under the same mutex.
+func copyInt64Map(m map[string]int64) map[string]int64 {
+	if m == nil {
+		return nil
+	}
+	cp := make(map[string]int64, len(m))
+	for k, v := range m {
+		cp[k] = v
+	}
+	return cp
+}
+
 // saveStats writes the current counters to disk atomically.
 func (s *Server) saveStats() {
 	if s.statsPath == "" {
@@ -464,9 +478,9 @@ func (s *Server) saveStats() {
 	s.mu.Lock()
 	f := statsFile{
 		Version:  1,
-		Stats:    s.accountStats,
-		TokenIn:  s.accountTokenIn,
-		TokenOut: s.accountTokenOut,
+		Stats:    copyInt64Map(s.accountStats),
+		TokenIn:  copyInt64Map(s.accountTokenIn),
+		TokenOut: copyInt64Map(s.accountTokenOut),
 	}
 	s.statsDirty = false
 	s.mu.Unlock()

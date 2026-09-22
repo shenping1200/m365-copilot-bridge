@@ -1,9 +1,12 @@
 package web
 
 import (
+	"crypto/rand"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -39,8 +42,28 @@ func loadAdminPassword() (string, bool) {
 	if p := strings.TrimSpace(os.Getenv("M365_ADMIN_PASSWORD")); p != "" {
 		return p, p == defaultAdminPassword
 	}
-	return defaultAdminPassword, true
+	// No password configured via env or persisted file: generate a strong random
+	// bootstrap password, persist it, and surface it in the logs. This removes the
+	// previously hardcoded "admin123" default that anyone could use to takeover a
+	// console exposed without M365_ADMIN_PASSWORD set.
+	pw, err := generateBootstrapPassword()
+	if err != nil {
+		return defaultAdminPassword, true // crypto unavailable: keep legacy default
+	}
+	_ = saveAdminPassword(pw)
+	log.Printf("m365-native: generated bootstrap admin password (save this): %s", pw)
+	return pw, true
 }
+
+// generateBootstrapPassword returns a 22-char URL-safe random password.
+func generateBootstrapPassword() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
 func saveAdminPassword(password string) error {
 	p := adminPasswordPath()
 	if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil {
