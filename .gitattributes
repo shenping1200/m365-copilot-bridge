@@ -1,1 +1,21 @@
 * text=auto eol=lf
+
+# 二进制资源：永远不做文本/CRLF 归一化，也按二进制 diff
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.bmp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.otf binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.tgz binary
+*.exe binary
