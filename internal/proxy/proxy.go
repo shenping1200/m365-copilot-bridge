@@ -25,12 +25,12 @@ const (
 )
 
 type Config struct {
-	Raw    string
-	Type   Kind
-	Host   string
-	Port   string
-	User   string
-	Pass   string
+	Raw  string
+	Type Kind
+	Host string
+	Port string
+	User string
+	Pass string
 	// UseTLS is true when the user wrote `https://` for the proxy URL.
 	// Many proxy providers label their service as "HTTPS" while the proxy
 	// itself accepts plain HTTP CONNECT — but real TLS-wrapped proxies do
@@ -42,13 +42,14 @@ type Config struct {
 }
 
 // Parse 识别以下格式：
-//   http(s)://[user:pass@]host:port           (标准)
-//   http(s)://host:port:user:pass             (非标准, 部分代理服务商常用)
-//   socks5://[user:pass@]host:port          (标准)
-//   socks5://host:port:user:pass            (非标准, 部分代理服务商常用)
-//   socks5h://host:port                      (远程解析 DNS)
-//   socks4://[user:pass@]host:port
-//   host:port                                (无 scheme, 默认按 socks5)
+//
+//	http(s)://[user:pass@]host:port           (标准)
+//	http(s)://host:port:user:pass             (非标准, 部分代理服务商常用)
+//	socks5://[user:pass@]host:port          (标准)
+//	socks5://host:port:user:pass            (非标准, 部分代理服务商常用)
+//	socks5h://host:port                      (远程解析 DNS)
+//	socks4://[user:pass@]host:port
+//	host:port                                (无 scheme, 默认按 socks5)
 func Parse(raw string) (Config, error) {
 	raw = strings.TrimSpace(raw)
 	c := Config{Raw: raw}

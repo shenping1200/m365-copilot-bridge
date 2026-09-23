@@ -332,20 +332,20 @@ func (c *Client) chatWithHandlers(ctx context.Context, acc Account, req Request,
 					text = strings.Join(deltas, "")
 				}
 				return Result{
-					Text:           text,
-		FullText:       func() string {
+					Text: text,
+					FullText: func() string {
 
-			f := streamed.String()
+						f := streamed.String()
 
-			if len(text) > len(f) {
+						if len(text) > len(f) {
 
-				f = text
+							f = text
 
-			}
+						}
 
-			return f
+						return f
 
-		}(),
+					}(),
 					ConversationID: req.ConversationID,
 					SessionID:      req.SessionID,
 					RequestID:      requestID,

@@ -10,7 +10,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - run: gofmt -l .
+      - name: gofmt check
+        run: test -z "$(gofmt -l .)" || (echo "unformatted files:"; gofmt -l .; exit 1)
         shell: bash
       - run: go test ./...
       - run: go vet ./...

@@ -64,7 +64,7 @@ func heuristicTokenCount(text string) int {
 	if ascii == 0 && other == 0 {
 		return 0
 	}
-	return (ascii + 3) / 4 + other
+	return (ascii+3)/4 + other
 }
 
 func serializedTokenCount(v any, count func(string) int) int {

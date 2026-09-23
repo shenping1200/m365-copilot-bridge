@@ -151,20 +151,20 @@ func (s *Store) Upsert(tok TokenSet) (AccountToken, error) {
 	found := false
 	for i, existing := range s.data.Accounts {
 		if existing.ID == acc.ID || (acc.Email != "" && existing.Email == acc.Email) {
-		if acc.RefreshToken == "" {
-			acc.RefreshToken = existing.RefreshToken
-		}
-		if acc.TID == "" {
-			acc.TID = existing.TID
-		}
-		if acc.OID == "" {
-			acc.OID = existing.OID
-		}
-		// OAuth 登录流程不带 proxy, 保留用户在 Web 界面手动设置的代理
-		if acc.Proxy == "" {
-			acc.Proxy = existing.Proxy
-		}
-		s.data.Accounts[i] = acc
+			if acc.RefreshToken == "" {
+				acc.RefreshToken = existing.RefreshToken
+			}
+			if acc.TID == "" {
+				acc.TID = existing.TID
+			}
+			if acc.OID == "" {
+				acc.OID = existing.OID
+			}
+			// OAuth 登录流程不带 proxy, 保留用户在 Web 界面手动设置的代理
+			if acc.Proxy == "" {
+				acc.Proxy = existing.Proxy
+			}
+			s.data.Accounts[i] = acc
 			found = true
 			break
 		}
