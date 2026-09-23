@@ -48,7 +48,7 @@ type Config struct {
 //	socks5://[user:pass@]host:port          (标准)
 //	socks5://host:port:user:pass            (非标准, 部分代理服务商常用)
 //	socks5h://host:port                      (远程解析 DNS)
-//	socks4://[user:pass@]host:port
+//	socks4:// — 暂不支持（Parse 直接报错，请改用 socks5://）
 //	host:port                                (无 scheme, 默认按 socks5)
 func Parse(raw string) (Config, error) {
 	raw = strings.TrimSpace(raw)
@@ -74,8 +74,11 @@ func Parse(raw string) (Config, error) {
 			c.Type = KindSOCKS5
 			return parseSocks(c, rest)
 		case "socks4":
-			c.Type = KindSOCKS4
-			return parseSocks(c, rest)
+			// golang.org/x/net/proxy 只实现了 SOCKS5, 没有 SOCKS4。此前把
+			// socks4 与 socks5 合并走 proxy.SOCKS5, 导致对 SOCKS4 服务端发
+			// SOCKS5 握手(首字节 0x05)被直接拒绝, 用户只看到"连接代理失败"。
+			// 与其静默发错协议, 不如诚实失败并给出明确指引。
+			return c, fmt.Errorf("暂不支持 SOCKS4 代理协议: %q，请改用 socks5://（例如 socks5://user:pass@host:port）", raw)
 		default:
 			return c, fmt.Errorf("不支持的代理协议: %q", scheme)
 		}

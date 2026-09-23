@@ -70,12 +70,12 @@
 | `socks5://user:pass@1.2.3.4:1080` | SOCKS5 带账号密码（标准三段式） |
 | `socks5://1.2.3.4:1080:user:pass` | SOCKS5 带账号密码（**非标准四段式**，部分服务商常用） |
 | `socks5h://1.2.3.4:1080` | SOCKS5 + 远程 DNS（域名由代理解析） |
-| `socks4://1.2.3.4:1080` | SOCKS4（可带 `user:pass@`） |
+| `socks4://1.2.3.4:1080` | ⚠️ **暂不支持**（Parse 直接报错），请改用 `socks5://` |
 | `http://1.2.3.4:8080` | HTTP 代理（CONNECT 隧道） |
 | `http://user:pass@1.2.3.4:8080` | HTTP 代理带账号密码 |
 | `https://1.2.3.4:8443` | HTTPS 代理（真 TLS；仅对「连代理」这一段跳过证书校验，目标站仍正常校验） |
 
-> 协议识别源码见 `internal/proxy/proxy.go`：`http(s)://` 与 `socks5/socks5h/socks4://` 均支持标准三段式 `[user:pass@]host:port` 与非标准四段式 `host:port:user:pass`；无 scheme 默认 SOCKS5。
+> 协议识别源码见 `internal/proxy/proxy.go`：`http(s)://` 与 `socks5/socks5h://` 均支持标准三段式 `[user:pass@]host:port` 与非标准四段式 `host:port:user:pass`；无 scheme 默认 SOCKS5。**SOCKS4 暂不支持**（`socks4://` 会被 `Parse` 直接拒绝并报错，请改用 `socks5://`）。
 
 ### ⚠️ 两个易错点
 

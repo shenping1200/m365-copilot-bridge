@@ -46,7 +46,7 @@ func TestParse(t *testing.T) {
 		// socks5h remote DNS resolution
 		{"socks5h remote dns", "socks5h://1.2.3.4:1080", false, "", KindSOCKS5, "1.2.3.4", "1080", "", "", false},
 		// socks4 standard with auth
-		{"socks4 standard with auth", "socks4://u:p@1.2.3.4:1080", false, "", KindSOCKS4, "1.2.3.4", "1080", "u", "p", false},
+		{"socks4 unsupported -> error", "socks4://u:p@1.2.3.4:1080", true, "暂不支持 SOCKS4", "", "", "", "", "", false},
 		// no scheme defaults to socks5
 		{"no scheme defaults socks5", "1.2.3.4:1080", false, "", KindSOCKS5, "1.2.3.4", "1080", "", "", false},
 
