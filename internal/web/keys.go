@@ -47,6 +47,7 @@ func openAPIKeys() *apiKeyStore {
 	}
 	return s
 }
+
 // writeFile serializes the store to disk atomically. It must be called WITHOUT
 // holding s.mu so concurrent valid() calls are not blocked on I/O.
 func (s *apiKeyStore) writeFile() {

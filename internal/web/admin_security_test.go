@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -30,15 +31,30 @@ func postJSON(t *testing.T, c *http.Client, url, body string) *http.Response {
 }
 
 func TestDefaultPasswordForcesChangeAndRotatesSessions(t *testing.T) {
+	pwFile := t.TempDir() + "/admin-password"
 	t.Setenv("M365_ADMIN_PASSWORD", "")
-	t.Setenv("M365_ADMIN_PASSWORD_FILE", t.TempDir()+"/admin-password")
+	t.Setenv("M365_ADMIN_PASSWORD_FILE", pwFile)
 	s, err := New()
 	if err != nil {
 		t.Fatal(err)
 	}
 	ts, c := adminTestClient(t, s.Routes())
 
+	// "admin123" is no longer a valid password. The failed attempt still triggers
+	// generation of a random bootstrap password written to pwFile.
 	r := postJSON(t, c, ts.URL+"/api/admin/login", `{"password":"admin123"}`)
+	r.Body.Close()
+	if r.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("admin123 login=%d, want 401", r.StatusCode)
+	}
+
+	b, err := os.ReadFile(pwFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	boot := strings.TrimSpace(string(b))
+
+	r = postJSON(t, c, ts.URL+"/api/admin/login", `{"password":"`+boot+`"}`)
 	if r.StatusCode != 200 {
 		t.Fatalf("login=%d", r.StatusCode)
 	}
@@ -55,7 +71,7 @@ func TestDefaultPasswordForcesChangeAndRotatesSessions(t *testing.T) {
 		t.Fatalf("protected status=%d", r.StatusCode)
 	}
 
-	r = postJSON(t, c, ts.URL+"/api/admin/change-password", `{"current_password":"admin123","new_password":"a-new-password-123"}`)
+	r = postJSON(t, c, ts.URL+"/api/admin/change-password", `{"current_password":"`+boot+`","new_password":"a-new-password-123"}`)
 	if r.StatusCode != 200 {
 		t.Fatalf("change=%d", r.StatusCode)
 	}
@@ -76,6 +92,23 @@ func TestDefaultPasswordForcesChangeAndRotatesSessions(t *testing.T) {
 	r.Body.Close()
 	if r.StatusCode != 200 {
 		t.Fatalf("new session status=%d", r.StatusCode)
+	}
+}
+
+// TestAdmin123Rejected pins the P1 fix: the previously hardcoded "admin123"
+// default must never be an accepted login password.
+func TestAdmin123Rejected(t *testing.T) {
+	t.Setenv("M365_ADMIN_PASSWORD", "")
+	t.Setenv("M365_ADMIN_PASSWORD_FILE", t.TempDir()+"/admin-password")
+	s, err := New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ts, c := adminTestClient(t, s.Routes())
+	r := postJSON(t, c, ts.URL+"/api/admin/login", `{"password":"admin123"}`)
+	defer r.Body.Close()
+	if r.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("admin123 should be rejected, got=%d", r.StatusCode)
 	}
 }
 

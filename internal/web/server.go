@@ -42,8 +42,8 @@ type Server struct {
 	debug              *debugStore
 	settings           *settingsStore
 	accountStats       map[string]int64
-		accountTokenIn  map[string]int64
-		accountTokenOut map[string]int64
+	accountTokenIn     map[string]int64
+	accountTokenOut    map[string]int64
 	statsPath          string
 	statsDirty         bool
 	accountPool        *accountHealth
@@ -263,6 +263,7 @@ func (s *Server) adminKeys(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", 405)
 	}
 }
+
 // adminKeyReveal returns the cleartext API key for a given id.
 // 后端 apiKeyStore.create() 现已把完整 key 落盘(明文)。list 仍只返前缀,但这个端点把明文返给管理员。
 // 历史 key(本改动前创建) Key 字段空,返 notFound — 前端据此提示新建。
@@ -328,8 +329,8 @@ func (s *Server) accounts(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt    time.Time         `json:"expiresAt,omitempty"`
 		UpdatedAt    time.Time         `json:"updatedAt,omitempty"`
 		RequestCount int64             `json:"requestCount"`
-		TokenIn  int64 `json:"tokenIn"`
-		TokenOut int64 `json:"tokenOut"`
+		TokenIn      int64             `json:"tokenIn"`
+		TokenOut     int64             `json:"tokenOut"`
 		Proxy        string            `json:"proxy,omitempty"`
 		Health       accountHealthView `json:"health,omitempty"`
 	}
@@ -353,8 +354,8 @@ func (s *Server) accounts(w http.ResponseWriter, r *http.Request) {
 			Status: a.Status, OID: a.OID, TID: a.TID,
 			ExpiresAt: a.ExpiresAt, UpdatedAt: a.UpdatedAt,
 			RequestCount: cnt,
-			TokenIn:  tin,
-			TokenOut: tout,
+			TokenIn:      tin,
+			TokenOut:     tout,
 			Proxy:        a.Proxy,
 			Health:       healthMap[a.ID],
 		})
@@ -385,7 +386,7 @@ func estimateTokens(s string) int {
 			other++
 		}
 	}
-	return (ascii + 3) / 4 + other
+	return (ascii+3)/4 + other
 }
 
 // recordTokens estimates and accumulates input/output token usage for an
@@ -862,7 +863,7 @@ func (s *Server) resolveAccount(accountID string) (auth.AccountToken, error) {
 			continue
 		}
 		tok, err := s.tokens.EnsureValid(acc.ID)
-			if err == nil {
+		if err == nil {
 			s.mu.Lock()
 			s.accountStats[acc.ID]++
 			s.statsDirty = true

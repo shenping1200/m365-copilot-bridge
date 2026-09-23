@@ -15,8 +15,6 @@ import (
 	"time"
 )
 
-const defaultAdminPassword = "admin123"
-
 type loginAttempt struct {
 	Failures                 int
 	WindowStart, LockedUntil time.Time
@@ -37,10 +35,10 @@ func loadAdminPassword() (string, bool) {
 	// the protected persisted value takes precedence over the bootstrap env var.
 	if b, e := os.ReadFile(adminPasswordPath()); e == nil && strings.TrimSpace(string(b)) != "" {
 		p := strings.TrimSpace(string(b))
-		return p, p == defaultAdminPassword
+		return p, false
 	}
 	if p := strings.TrimSpace(os.Getenv("M365_ADMIN_PASSWORD")); p != "" {
-		return p, p == defaultAdminPassword
+		return p, false
 	}
 	// No password configured via env or persisted file: generate a strong random
 	// bootstrap password, persist it, and surface it in the logs. This removes the
@@ -48,7 +46,9 @@ func loadAdminPassword() (string, bool) {
 	// console exposed without M365_ADMIN_PASSWORD set.
 	pw, err := generateBootstrapPassword()
 	if err != nil {
-		return defaultAdminPassword, true // crypto unavailable: keep legacy default
+		// crypto/rand unavailable: refuse to fall back to a weak default; the
+		// service cannot safely operate without a cryptographically strong password.
+		log.Fatalf("m365-native: crypto/rand unavailable, cannot generate a secure bootstrap admin password; refusing to start")
 	}
 	_ = saveAdminPassword(pw)
 	log.Printf("m365-native: generated bootstrap admin password (save this): %s", pw)
@@ -85,9 +85,6 @@ func clientIP(r *http.Request) string {
 	return r.RemoteAddr
 }
 func validNewAdminPassword(p string) error {
-	if p == defaultAdminPassword {
-		return errors.New("new password must not be the default password")
-	}
 	if len(p) < 12 {
 		return errors.New("new password must be at least 12 characters")
 	}
