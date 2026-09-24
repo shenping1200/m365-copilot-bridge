@@ -225,10 +225,10 @@ func (c Config) socksAuth() *proxy.Auth {
 	return &proxy.Auth{User: c.User, Password: c.Pass}
 }
 
-// HTTPClient 返回带代理的 *http.Client (直连返回 DefaultClient)。
+// HTTPClient 返回带代理的 *http.Client (直连也带 30s 超时, 避免上游挂住永久等待)。
 func (c Config) HTTPClient() (*http.Client, error) {
 	if c.Type == KindDirect {
-		return http.DefaultClient, nil
+		return &http.Client{Timeout: 30 * time.Second}, nil
 	}
 	switch c.Type {
 	case KindHTTP:

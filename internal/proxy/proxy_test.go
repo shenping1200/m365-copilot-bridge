@@ -1,7 +1,6 @@
 package proxy
 
 import (
-	"net/http"
 	"strings"
 	"testing"
 
@@ -117,7 +116,8 @@ func TestProxyURLAndClientsSmoke(t *testing.T) {
 		t.Errorf("proxyURL user = %v, want u", u.User)
 	}
 
-	// direct client must be the shared default client
+	// direct client must carry a timeout so an unresponsive upstream cannot
+	// block forever (http.DefaultClient has Timeout=0 = wait forever).
 	dcCfg, err := Parse("")
 	if err != nil {
 		t.Fatal(err)
@@ -126,8 +126,8 @@ func TestProxyURLAndClientsSmoke(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if dc != http.DefaultClient {
-		t.Errorf("direct HTTPClient should be http.DefaultClient")
+	if dc.Timeout <= 0 {
+		t.Errorf("direct HTTPClient 缺超时保护 (Timeout=%v): 上游挂住会永久等待", dc.Timeout)
 	}
 
 	// error from Parse must propagate through the convenience wrappers
